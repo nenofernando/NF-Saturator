@@ -35,6 +35,7 @@ inline constexpr FactoryPreset kFactoryPresets[] = {
     { "Master",  "Master Tight",         2.0f, false, true,  true,   0.0f,  0.15f, 0.15f, 0.0f },
     { "Guitar",  "Guitar Crunch",        6.0f, true,  false, true,   0.50f, 0.0f,  0.30f, -1.0f },
     { "Guitar",  "Guitar Fat",           4.5f, true,  true,  false,  0.30f, 0.40f, 0.0f,  0.0f },
+    { "Drums",   "Drums Push",           8.0f, true,  true,  true,   0.0f,  0.0f,  0.0f,  0.0f },
     { "Drums",   "Drums Punch",          4.0f, false, true,  true,   0.0f,  0.40f, 0.30f, 0.0f },
     { "Drums",   "Drum Bus Glue",        3.0f, true,  true,  false,  0.20f, 0.50f, 0.0f,  0.0f },
     { "Drums",   "Kick & Bass Weight",   4.0f, true,  true,  false,  0.20f, 1.00f, 0.0f,  0.0f },

@@ -165,10 +165,10 @@ int main()
         assert(std::abs(mean / cnt) < 2.0e-3);
     }
 
-    // ---- Factory presets: 23, unique names, five categories, values in range, at least one valve on,
+    // ---- Factory presets: 24, unique names, five categories, values in range, at least one valve on,
     //      and each one stays level-compensated (finite, sane compensation gain)
     {
-        assert(nfsat::kNumFactoryPresets == 23);
+        assert(nfsat::kNumFactoryPresets == 24);
         std::set<std::string> names, cats;
         for (int i = 0; i < nfsat::kNumFactoryPresets; ++i)
         {
