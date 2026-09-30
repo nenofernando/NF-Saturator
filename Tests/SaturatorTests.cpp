@@ -97,13 +97,16 @@ int main()
         const double hfBase = harmonic(runSine(only(0, 1, 0, 0, 0.0), 0.0, 0.1, 10000.0), 10000.0, 1);
         const double hfHot  = harmonic(runSine(only(0, 1, 0, 0, 1.0), 0.0, 0.1, 10000.0), 10000.0, 1);
         assert(hfHot < 0.8 * hfBase);
-        // IRON head bump: small-signal gain at 70 Hz rises by >= 3 dB with warmth, while 1 kHz stays put
+        // IRON bass boost (shelf referenced to 100 Hz): +4.5..+8 dB at 100 Hz at full warmth, more towards the deep bass
+        // but never above +10 dB, nothing above ~500 Hz; and it does nothing at warmth 0
         {
-            auto amp70 = [&](double w, double f) { return harmonic(runSine(only(0, 1, 0, 0, w), 0.0, 0.01, f, 100), f, 1); };
-            const double bump = 20.0 * std::log10(amp70(1.0, 70.0) / amp70(0.0, 70.0));
-            const double mid  = 20.0 * std::log10(amp70(1.0, 1000.0) / amp70(0.0, 1000.0));
-            assert(bump > 3.0 && bump < 6.5);
+            auto amp = [&](double w, double f) { return harmonic(runSine(only(0, 1, 0, 0, w), 0.0, 0.01, f, 100), f, 1); };
+            auto boost = [&](double f) { return 20.0 * std::log10(amp(1.0, f) / amp(0.0, f)); };
+            const double b100 = boost(100.0), b50 = boost(50.0), b30 = boost(30.0), mid = boost(1000.0);
+            assert(b100 > 4.5 && b100 < 8.0);
+            assert(b50 > b100 && b50 < 10.0 && b30 < 10.0);
             assert(std::abs(mid) < 0.6);
+            assert(std::abs(20.0 * std::log10(amp(0.0, 100.0) / amp(0.0, 1000.0))) < 0.5);
         }
         // SOLID: warmth adds 2nd harmonic and rounds off the top (less 5th/7th at high drive)
         auto s0 = runSine(only(0, 0, 1, 0, 0, 0.0), 10.0, 0.5, 1000.0);

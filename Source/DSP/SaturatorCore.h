@@ -14,8 +14,9 @@
 // Each valve also has a "warmth" amount 0..1 (drag up on the valve): 0 = the base character,
 // 1 = the hottest version of that character:
 //   TUBE  : more bias / more gain  -> more asymmetry, more 2nd harmonic
-//   IRON  : a soft resonant low boost ("head bump", ~70 Hz) drives the low band harder, more core saturation,
-//           top end rolls off (darker, heavier): the soft, round, resonant bass of old tape / transformer gear
+//   IRON  : a soft, slightly resonant bass boost (low shelf referenced to 100 Hz, up to ~+6 dB there) drives the low band
+//           harder, more core saturation, top end rolls off (darker, heavier): the soft, round, "fat" bass of
+//           old tape / transformer / hi-fi tone-control gear
 //   SOLID : the knee softens (p 4 -> 2) and a little asymmetry appears -> from "bite" towards "warm"
 //
 // The core is meant to run oversampled (the plug-in uses 4x): `fs` is the INTERNAL sample rate.
@@ -50,7 +51,7 @@ struct StageParams
 struct ChannelState
 {
     double ironLow = 0.0, ironHf = 0.0;   // IRON: low band and top-end roll-off
-    double bumpZ1 = 0.0, bumpZ2 = 0.0;    // IRON: head-bump filter state
+    double bumpZ1 = 0.0, bumpZ2 = 0.0;    // IRON: bass-boost filter state
     double dcIn = 0.0, dcOut = 0.0;       // DC blocker
 };
 
@@ -71,11 +72,16 @@ inline StageParams makeParams(const Stages& st, double fs)
     p.ironGLow = 2.8 + 2.2 * w_i;
     p.ironGCore = 0.4 + 0.3 * w_i;
     p.ironHfCoeff = 1.0 - std::exp(-2.0 * kPi * (60000.0 - 52000.0 * w_i) / fs);
-    {   // head bump: RBJ peaking filter, +0..+5 dB at 70 Hz, Q 1.0
-        const double A = std::pow(10.0, (5.0 * w_i) / 40.0), w0 = 2.0 * kPi * 70.0 / fs, alpha = std::sin(w0) / 2.0, c = std::cos(w0);
-        const double a0 = 1.0 + alpha / A;
-        p.bumpB0 = (1.0 + alpha * A) / a0; p.bumpB1 = -2.0 * c / a0; p.bumpB2 = (1.0 - alpha * A) / a0;
-        p.bumpA1 = -2.0 * c / a0; p.bumpA2 = (1.0 - alpha / A) / a0;
+    {   // low "bass boost" shelf, referenced to 100 Hz: RBJ low shelf (corner 120 Hz, Q 1.0 = a touch of resonance),
+        // +0..+8 dB with warmth (about +6 dB at 100 Hz at full warmth, level from there down to the lowest bass).
+        const double G = 8.0 * w_i, A = std::pow(10.0, G / 40.0), sA = std::sqrt(A);
+        const double w0 = 2.0 * kPi * 120.0 / fs, c = std::cos(w0), alpha = std::sin(w0) / 2.0;   // Q = 1.0
+        const double a0 = (A + 1.0) + (A - 1.0) * c + 2.0 * sA * alpha;
+        p.bumpB0 = A * ((A + 1.0) - (A - 1.0) * c + 2.0 * sA * alpha) / a0;
+        p.bumpB1 = 2.0 * A * ((A - 1.0) - (A + 1.0) * c) / a0;
+        p.bumpB2 = A * ((A + 1.0) - (A - 1.0) * c - 2.0 * sA * alpha) / a0;
+        p.bumpA1 = -2.0 * ((A - 1.0) + (A + 1.0) * c) / a0;
+        p.bumpA2 = ((A + 1.0) + (A - 1.0) * c - 2.0 * sA * alpha) / a0;
     }
     p.tubeK = 1.6 + 0.4 * w_t;
     p.tubeBias = 0.13 + 0.17 * w_t;
@@ -115,12 +121,13 @@ inline double processStages(double x, const StageParams& p, ChannelState& s)
     return y;
 }
 
-// Reference programme (100 Hz + 1 kHz + 4 kHz sines, -18 dBFS RMS) used to level-match Drive.
+// Reference programme (100 Hz + 1 kHz + 4 kHz sines, mid-weighted, -18 dBFS RMS) used to level-match Drive.
+// It is mid-weighted on purpose: a bass boost (IRON warmth) should make the bass louder, not the mids quieter.
 inline double referenceSample(int n, double fs)
 {
     const double t = (double) n / fs;
     const double a = std::pow(10.0, -18.0 / 20.0) * std::sqrt(2.0 / 3.0) * std::sqrt(2.0);
-    return a * (std::sin(2 * kPi * 100.0 * t) * 0.9 + std::sin(2 * kPi * 1000.0 * t) * 0.7 + std::sin(2 * kPi * 4000.0 * t) * 0.45) / 1.1;
+    return a * (std::sin(2 * kPi * 100.0 * t) * 0.45 + std::sin(2 * kPi * 1000.0 * t) * 0.7 + std::sin(2 * kPi * 4000.0 * t) * 0.45) / 0.9;
 }
 
 // Measures the gain (dB) that makes the reference programme come out at the same RMS as it went in.

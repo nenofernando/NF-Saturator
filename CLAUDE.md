@@ -24,6 +24,6 @@ look-and-feel and artwork).
   `Tools/GenCompTable.cpp` from the same code: **regenerate it whenever `SaturatorCore.h` changes** (the tests fail if stale).
 - Each valve has a "warmth" 0..1 (parameters `tubeWarm`, `ironWarm`, `solidWarm`, default 0 = base character): drag up /
   down on the valve (`ValveButton`), Alt-click resets; warming an off valve turns it on. Warmth is smoothed (~50 ms) in the
-  processor and included in the compensation lookup. The valve light turns from orange to red-hot with the warmth.
+  processor and included in the compensation lookup. IRON warmth = low shelf (corner 120 Hz, Q 1, up to +8 dB, ~+6 dB at 100 Hz) ahead of the low-band saturation, inspired by the owner's memory of a 1980s hi-fi (its bass control acted at 100 Hz, per info the owner supplied; not verified). The compensation reference programme is mid-weighted on purpose. The valve light turns from orange to red-hot with the warmth.
 - Default window 810 x 270 (aspect 3:1, owner's choice for NF Saturator; the other NF plug-ins default to 900 x 300);
   double-click on the NF logo returns to it.

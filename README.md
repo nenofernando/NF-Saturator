@@ -8,7 +8,7 @@ VST3, AU (macOS) and AAX (Pro Tools).
   weight, saturates the lows first), **SOLID** (transistor / op-amp style bite, odd harmonics). They emulate the *character*
   of these kinds of circuits, not any specific unit.
 - **Warmth on each valve:** click a valve to switch it on/off; **drag it up** and the light gets hotter (orange to red-hot)
-  while that valve's character grows (TUBE: more 2nd harmonic; IRON: heavier lows and a darker top end; SOLID: rounder, with
+  while that valve's character grows (TUBE: more 2nd harmonic; IRON: a soft, fat, slightly resonant bass boost referenced to 100 Hz (about +6 dB there, +8 dB in the deep bass) and a darker top end; SOLID: rounder, with
   a touch of even harmonics). **Drag down** to cool it back to the base state; **Alt/Option-click** resets it.
 - Opens at 810 x 270 by default; **double-click the NF logo** to return to that size.
 - **Output** (-12..+12 dB), Power, preset save/load. 4x oversampling.
