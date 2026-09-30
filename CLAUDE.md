@@ -32,3 +32,9 @@ look-and-feel and artwork).
   starting points not tuned by ear.
 - Default window 810 x 270 (aspect 3:1, owner's choice for NF Saturator; the other NF plug-ins default to 900 x 300);
   double-click on the NF logo returns to it.
+
+## Installers (built locally, never committed)
+- macOS: `bash Installer/macos/build_dmg.sh` on the owner's Mac -> `~/Desktop/NF Saturator <version>.dmg` (English .pkg with
+  VST3 / AU / PACE-signed AAX options; no Apple Developer). AAX SDK in `~/Documents`, PACE account `nenofernando`,
+  Wrap GUID `F98670F0-BCEB-11F1-8437-00505692AD3E` (product NFSATURATOR001). `SKIP_AAX=1` = no AAX. The version is read from `CMakeLists.txt`.
+- Windows: `Installer\Windows\build_windows_installer.ps1` (VST3 + signed AAX, Inno Setup); version also read from `CMakeLists.txt`.
