@@ -97,6 +97,14 @@ int main()
         const double hfBase = harmonic(runSine(only(0, 1, 0, 0, 0.0), 0.0, 0.1, 10000.0), 10000.0, 1);
         const double hfHot  = harmonic(runSine(only(0, 1, 0, 0, 1.0), 0.0, 0.1, 10000.0), 10000.0, 1);
         assert(hfHot < 0.8 * hfBase);
+        // IRON head bump: small-signal gain at 70 Hz rises by >= 3 dB with warmth, while 1 kHz stays put
+        {
+            auto amp70 = [&](double w, double f) { return harmonic(runSine(only(0, 1, 0, 0, w), 0.0, 0.01, f, 100), f, 1); };
+            const double bump = 20.0 * std::log10(amp70(1.0, 70.0) / amp70(0.0, 70.0));
+            const double mid  = 20.0 * std::log10(amp70(1.0, 1000.0) / amp70(0.0, 1000.0));
+            assert(bump > 3.0 && bump < 6.5);
+            assert(std::abs(mid) < 0.6);
+        }
         // SOLID: warmth adds 2nd harmonic and rounds off the top (less 5th/7th at high drive)
         auto s0 = runSine(only(0, 0, 1, 0, 0, 0.0), 10.0, 0.5, 1000.0);
         auto s1 = runSine(only(0, 0, 1, 0, 0, 1.0), 10.0, 0.5, 1000.0);

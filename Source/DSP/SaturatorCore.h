@@ -14,7 +14,8 @@
 // Each valve also has a "warmth" amount 0..1 (drag up on the valve): 0 = the base character,
 // 1 = the hottest version of that character:
 //   TUBE  : more bias / more gain  -> more asymmetry, more 2nd harmonic
-//   IRON  : lower-frequency band saturates harder, more core saturation, top end rolls off (darker, heavier)
+//   IRON  : a soft resonant low boost ("head bump", ~70 Hz) drives the low band harder, more core saturation,
+//           top end rolls off (darker, heavier): the soft, round, resonant bass of old tape / transformer gear
 //   SOLID : the knee softens (p 4 -> 2) and a little asymmetry appears -> from "bite" towards "warm"
 //
 // The core is meant to run oversampled (the plug-in uses 4x): `fs` is the INTERNAL sample rate.
@@ -40,6 +41,7 @@ struct StageParams
 {
     bool tube = false, iron = false, solid = false;
     double ironCoeff = 0, ironGLow = 2.8, ironGCore = 0.4, ironHfCoeff = 0;
+    double bumpB0 = 1, bumpB1 = 0, bumpB2 = 0, bumpA1 = 0, bumpA2 = 0;   // IRON head-bump peaking filter (transparent at warmth 0)
     double tubeK = 1.6, tubeBias = 0.18, tubeT0 = 0, tubeNorm = 1;
     double solidMix = 0, solidBias = 0, solidT0 = 0;
     double dcCoeff = 0;
@@ -48,6 +50,7 @@ struct StageParams
 struct ChannelState
 {
     double ironLow = 0.0, ironHf = 0.0;   // IRON: low band and top-end roll-off
+    double bumpZ1 = 0.0, bumpZ2 = 0.0;    // IRON: head-bump filter state
     double dcIn = 0.0, dcOut = 0.0;       // DC blocker
 };
 
@@ -68,8 +71,14 @@ inline StageParams makeParams(const Stages& st, double fs)
     p.ironGLow = 2.8 + 2.2 * w_i;
     p.ironGCore = 0.4 + 0.3 * w_i;
     p.ironHfCoeff = 1.0 - std::exp(-2.0 * kPi * (60000.0 - 52000.0 * w_i) / fs);
-    p.tubeK = 1.6 + 0.8 * w_t;
-    p.tubeBias = 0.18 + 0.30 * w_t;
+    {   // head bump: RBJ peaking filter, +0..+5 dB at 70 Hz, Q 1.0
+        const double A = std::pow(10.0, (5.0 * w_i) / 40.0), w0 = 2.0 * kPi * 70.0 / fs, alpha = std::sin(w0) / 2.0, c = std::cos(w0);
+        const double a0 = 1.0 + alpha / A;
+        p.bumpB0 = (1.0 + alpha * A) / a0; p.bumpB1 = -2.0 * c / a0; p.bumpB2 = (1.0 - alpha * A) / a0;
+        p.bumpA1 = -2.0 * c / a0; p.bumpA2 = (1.0 - alpha / A) / a0;
+    }
+    p.tubeK = 1.6 + 0.4 * w_t;
+    p.tubeBias = 0.13 + 0.17 * w_t;
     p.tubeT0 = std::tanh(p.tubeK * p.tubeBias);
     p.tubeNorm = p.tubeK * (1.0 - p.tubeT0 * p.tubeT0);
     p.solidMix = w_s;
@@ -84,6 +93,12 @@ inline double processStages(double x, const StageParams& p, ChannelState& s)
 {
     if (p.iron)
     {
+        {   // head bump (transposed direct form II)
+            const double y = p.bumpB0 * x + s.bumpZ1;
+            s.bumpZ1 = p.bumpB1 * x - p.bumpA1 * y + s.bumpZ2;
+            s.bumpZ2 = p.bumpB2 * x - p.bumpA2 * y;
+            x = y;
+        }
         s.ironLow += p.ironCoeff * (x - s.ironLow);
         const double high = x - s.ironLow;
         const double y = high + std::tanh(p.ironGLow * s.ironLow) / p.ironGLow;
