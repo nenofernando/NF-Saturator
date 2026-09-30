@@ -236,21 +236,33 @@ void NFSaturatorAudioProcessorEditor::paint(juce::Graphics& g)
     // Scales: Drive 0..10 (eleven numbered marks), Output -12 / 0 / +12 with 0 dB at 12 o'clock.
     { std::vector<Tick> t; for(int i=0;i<=10;++i) t.push_back({-135.0f+(float)i*27.0f, juce::String(i), true, 16.0f});
       drawScale(g,{kDriveX,kKnobY},t); }
-    { std::vector<Tick> t; for(int i=0;i<=12;++i) t.push_back({-135.0f+(float)i*22.5f, {}, i%3==0, 14.0f});
-      t[0].label="-12"; t[6].label="0"; t[12].label="+12"; t[6].fontSize=16.0f;
+    { // Output: same look as Drive - a numbered mark every 2 dB, -12 ... 0 ... +12 (0 dB at 12 o'clock)
+      std::vector<Tick> t;
+      for(int i=0;i<=12;++i){ const int v=-12+2*i; t.push_back({-135.0f+(float)i*22.5f, v>0 ? "+"+juce::String(v) : juce::String(v), true, v==0 ? 16.0f : 14.0f}); }
       drawScale(g,{kOutputX,kKnobY},t); }
 
-    // Tiny scales around the small knobs (7 marks over the 270-degree sweep; min / centre / max a little longer).
+    // Tiny scales around the small knobs (7 marks over the 270-degree sweep; min / centre / max a little longer and numbered).
     // Kept short and close to the knob so they never reach the scales of the big knobs.
-    for (float cx : { kInputX, kMixX })
-        for (int i = 0; i < 7; ++i)
-        {
-            const float a = (-135.0f + (float) i * 45.0f) * juce::MathConstants<float>::pi / 180.0f;
-            const juce::Point<float> c(cx, kSmallKnobY), dir(std::sin(a), -std::cos(a));
-            const bool major = (i % 3) == 0;
-            g.setColour(juce::Colours::white);
-            g.drawLine(juce::Line<float>(c + dir * 30.0f, c + dir * (major ? 37.0f : 34.0f)), major ? 1.8f : 1.2f);
-        }
+    {
+        static const char* const inputLabels[3] = { "-12", "0", "+12" };   // dB
+        static const char* const mixLabels[3]   = { "0", "50", "100" };    // % wet
+        const float centres[2] = { kInputX, kMixX };
+        for (int k = 0; k < 2; ++k)
+            for (int i = 0; i < 7; ++i)
+            {
+                const float a = (-135.0f + (float) i * 45.0f) * juce::MathConstants<float>::pi / 180.0f;
+                const juce::Point<float> c(centres[k], kSmallKnobY), dir(std::sin(a), -std::cos(a));
+                const bool major = (i % 3) == 0;
+                g.setColour(juce::Colours::white);
+                g.drawLine(juce::Line<float>(c + dir * 30.0f, c + dir * (major ? 37.0f : 34.0f)), major ? 1.8f : 1.2f);
+                if (major)
+                {
+                    const auto p = c + dir * 45.0f;
+                    g.setFont(juce::Font(juce::FontOptions(10.5f)));
+                    g.drawText(k == 0 ? inputLabels[i / 3] : mixLabels[i / 3], juce::Rectangle<float>(p.x - 16.0f, p.y - 7.0f, 32.0f, 14.0f), juce::Justification::centred);
+                }
+            }
+    }
 
     // Small knobs beside the valves: INPUT (left) and MIX (right)
     // (names sit on the same row and in the same type as TUBE / IRON / SOLID: valve names are drawn at y = 78 + 204)
