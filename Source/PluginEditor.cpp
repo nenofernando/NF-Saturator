@@ -16,7 +16,7 @@ constexpr float kDriveX = 210.0f, kOutputX = 990.0f;
 constexpr int kDefaultWidth = 810, kDefaultHeight = 270;   // default window size (owner's choice); double-click on the logo returns to it
 constexpr float kValveXs[3] = { 480.0f, 600.0f, 720.0f };
 // Two small knobs flanking the valves: INPUT (left) and MIX (right)
-constexpr float kInputX = 382.0f, kMixX = 818.0f, kSmallKnobY = 250.0f, kSmallBox = 72.0f;   // small knobs: a bit larger (was 64), still clear of the big knobs and the valves
+constexpr float kInputX = 382.0f, kMixX = 818.0f, kSmallKnobY = 264.0f, kSmallBox = 72.0f;   // small knobs: a bit larger (was 64), still clear of the big knobs and the valves
 constexpr float kSmallScale = kSmallBox / 64.0f;   // tick marks and numbers scale with the knob
 
 juce::String formatDrive(double v){ return juce::String(v,1); }
@@ -313,8 +313,8 @@ void NFSaturatorAudioProcessorEditor::paint(juce::Graphics& g)
     // Small knobs beside the valves: INPUT (left) and MIX (right)
     // (names sit on the same row and in the same type as TUBE / IRON / SOLID: valve names are drawn at y = 78 + 204)
     g.setColour(juce::Colours::white);g.setFont(juce::Font(juce::FontOptions(15.0f,juce::Font::bold)));
-    g.drawText("INPUT", juce::Rectangle<int>((int)kInputX-60,282,120,20), juce::Justification::centred);
-    g.drawText("MIX",   juce::Rectangle<int>((int)kMixX-60,282,120,20), juce::Justification::centred);
+    g.drawText("INPUT", juce::Rectangle<int>((int)kInputX-60,300,120,20), juce::Justification::centred);
+    g.drawText("MIX",   juce::Rectangle<int>((int)kMixX-60,300,120,20), juce::Justification::centred);
 
     g.setColour(juce::Colours::white);g.setFont(juce::Font(juce::FontOptions(20.0f,juce::Font::bold)));
     g.drawText("DRIVE", juce::Rectangle<int>((int)kDriveX-80,266,160,24), juce::Justification::centred);
