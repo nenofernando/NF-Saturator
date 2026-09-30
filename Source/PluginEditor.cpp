@@ -64,8 +64,8 @@ NFSaturatorAudioProcessorEditor::NFSaturatorAudioProcessorEditor(NFSaturatorAudi
     mixKnob.setDoubleClickReturnValue(true,1.0);
     inputKnob.setTooltip("INPUT: gain in front of the valves (-12..+12 dB). More input = more saturation and punch. Double-click: 0 dB");
     mixKnob.setTooltip("MIX: blend of the original (dry) and the saturated signal. 100% = all saturated; lower = parallel saturation. Double-click: 100%");
-    inputKnob.onValueChange = [this]{ if (inputKnob.isMouseOverOrDragging()) inputBubble.showRaw("INPUT " + formatOut(inputKnob.getValue())); };
-    mixKnob.onValueChange   = [this]{ if (mixKnob.isMouseOverOrDragging())   mixBubble.showRaw("MIX " + juce::String(juce::roundToInt((float) mixKnob.getValue() * 100.0f)) + "%"); };
+    inputKnob.onValueChange = [this]{ if (inputKnob.isMouseOverOrDragging()) inputBubble.showRaw(formatOut(inputKnob.getValue())); };
+    mixKnob.onValueChange   = [this]{ if (mixKnob.isMouseOverOrDragging())   mixBubble.showRaw(juce::String(juce::roundToInt((float) mixKnob.getValue() * 100.0f)) + "%"); };
     for(auto* b:{&tubeBubble,&ironBubble,&solidBubble}) addAndMakeVisible(*b);
     addAndMakeVisible(power);power.setClickingTogglesState(true);
     for(auto* v:{&tubeValve,&ironValve,&solidValve}) addAndMakeVisible(*v);
@@ -304,8 +304,9 @@ void NFSaturatorAudioProcessorEditor::resized()
 
     inputKnob.setBounds(scaleBounds({kInputX-kSmallBox*0.5f, kSmallKnobY-kSmallBox*0.5f, kSmallBox, kSmallBox}));
     mixKnob.setBounds(scaleBounds({kMixX-kSmallBox*0.5f, kSmallKnobY-kSmallBox*0.5f, kSmallBox, kSmallBox}));
-    inputBubble.setBounds(scaleBounds({kInputX-45.0f, kSmallKnobY-52.0f, 90.0f, 24.0f}));
-    mixBubble.setBounds(scaleBounds({kMixX-45.0f, kSmallKnobY-52.0f, 90.0f, 24.0f}));
+    // Same bubble (76 x 24, value only) and same spot relative to the knob as on DRIVE / OUTPUT (a little below its centre).
+    inputBubble.setBounds(scaleBounds({kInputX-38.0f, kSmallKnobY+3.0f, 76.0f, 24.0f}));
+    mixBubble.setBounds(scaleBounds({kMixX-38.0f, kSmallKnobY+3.0f, 76.0f, 24.0f}));
     power.setBounds(scaleBounds({1075.0f, 43.0f, 66.0f, 66.0f}));
     logoButton.setBounds(scaleBounds({42.0f, 3.0f, 108.0f, 62.0f}));
     menuButton.setBounds(scaleBounds({1020.0f, 25.0f, 34.0f, 28.0f}));
