@@ -8,6 +8,7 @@ struct PresetManager
 {
     static juce::File getPresetsDirectory();
     static juce::Result savePreset(juce::AudioProcessorValueTreeState& apvts, const juce::File& file);
+    static void applyFactoryPreset(juce::AudioProcessorValueTreeState& apvts, int index);
     static juce::Result loadPreset(juce::AudioProcessorValueTreeState& apvts, const juce::File& file);
 };
 }

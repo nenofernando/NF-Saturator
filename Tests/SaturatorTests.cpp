@@ -1,4 +1,8 @@
 #include "../Source/DSP/CompLookup.h"
+#include "../Source/FactoryPresets.h"
+#include <cstring>
+#include <set>
+#include <string>
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
@@ -159,6 +163,31 @@ int main()
             if (n >= 192000) { mean += y; ++cnt; }
         }
         assert(std::abs(mean / cnt) < 2.0e-3);
+    }
+
+    // ---- Factory presets: 23, unique names, five categories, values in range, at least one valve on,
+    //      and each one stays level-compensated (finite, sane compensation gain)
+    {
+        assert(nfsat::kNumFactoryPresets == 23);
+        std::set<std::string> names, cats;
+        for (int i = 0; i < nfsat::kNumFactoryPresets; ++i)
+        {
+            const auto& f = nfsat::kFactoryPresets[i];
+            assert(names.insert(f.name).second);
+            cats.insert(f.category);
+            assert(f.drive >= 0.0f && f.drive <= 10.0f);
+            assert(f.tubeWarm >= 0.0f && f.tubeWarm <= 1.0f && f.ironWarm >= 0.0f && f.ironWarm <= 1.0f && f.solidWarm >= 0.0f && f.solidWarm <= 1.0f);
+            assert(f.outputDb >= -12.0f && f.outputDb <= 12.0f);
+            assert(f.tube || f.iron || f.solid);
+            Stages st = only(f.tube, f.iron, f.solid, f.tubeWarm, f.ironWarm, f.solidWarm);
+            const double g = compensationGain(f.drive, st);
+            assert(std::isfinite(g) && g > 0.03 && g < 40.0);
+        }
+        assert(cats.size() == 5);
+        int changes = 0;
+        for (int i = 1; i < nfsat::kNumFactoryPresets; ++i)
+            if (std::strcmp(nfsat::kFactoryPresets[i].category, nfsat::kFactoryPresets[i - 1].category) != 0) ++changes;
+        assert(changes == 4);   // each category is one contiguous block
     }
 
     std::cout << "NF Saturator DSP tests passed\n";

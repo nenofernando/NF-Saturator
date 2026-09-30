@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "NFSaturatorBinaryData.h"
+#include "FactoryPresets.h"
 #ifndef JucePlugin_VersionString
  #define JucePlugin_VersionString "0.0.0-test"
 #endif
@@ -108,8 +109,19 @@ juce::Rectangle<int> NFSaturatorAudioProcessorEditor::scaleBounds(juce::Rectangl
 
 void NFSaturatorAudioProcessorEditor::showMainMenu()
 {
+    juce::PopupMenu factory;
+    juce::String lastCategory;
+    for (int i = 0; i < nfsat::kNumFactoryPresets; ++i)
+    {
+        const auto& f = nfsat::kFactoryPresets[i];
+        if (lastCategory != f.category) { factory.addSectionHeader(f.category); lastCategory = f.category; }
+        factory.addItem(100 + i, f.name);
+    }
+
     juce::PopupMenu menu;
     menu.addSectionHeader("PRESETS");
+    menu.addSubMenu("Factory Presets", factory);
+    menu.addSeparator();
     menu.addItem(1, "Save Preset...");
     menu.addItem(2, "Load Preset...");
     menu.addSeparator();
@@ -122,6 +134,7 @@ void NFSaturatorAudioProcessorEditor::showMainMenu()
             if (result == 1) safeThis->handleSavePreset();
             else if (result == 2) safeThis->handleLoadPreset();
             else if (result == 3) safeThis->showAbout();
+            else if (result >= 100) nfsat::PresetManager::applyFactoryPreset(safeThis->processor.apvts, result - 100);
         });
 }
 

@@ -1,4 +1,5 @@
 #include "PresetManager.h"
+#include "FactoryPresets.h"
 
 namespace nfsat
 {
@@ -7,6 +8,31 @@ namespace
 constexpr const char* kSignature = "NFSaturatorPreset";
 constexpr int kFormatVersion = 1;
 constexpr juce::int64 kMaxFileBytes = 1 * 1024 * 1024;
+
+void setParamValue(juce::AudioProcessorValueTreeState& apvts, const char* id, float value)
+{
+    if (auto* p = apvts.getParameter(id))
+    {
+        p->beginChangeGesture();
+        p->setValueNotifyingHost(p->convertTo0to1(value));
+        p->endChangeGesture();
+    }
+}
+}
+
+void PresetManager::applyFactoryPreset(juce::AudioProcessorValueTreeState& apvts, int index)
+{
+    if (index < 0 || index >= kNumFactoryPresets) return;
+    const auto& f = kFactoryPresets[index];
+    setParamValue(apvts, "drive", f.drive);
+    setParamValue(apvts, "tube", f.tube ? 1.0f : 0.0f);
+    setParamValue(apvts, "iron", f.iron ? 1.0f : 0.0f);
+    setParamValue(apvts, "solid", f.solid ? 1.0f : 0.0f);
+    setParamValue(apvts, "tubeWarm", f.tubeWarm);
+    setParamValue(apvts, "ironWarm", f.ironWarm);
+    setParamValue(apvts, "solidWarm", f.solidWarm);
+    setParamValue(apvts, "outputGain", f.outputDb);
+    setParamValue(apvts, "power", 1.0f);
 }
 
 juce::File PresetManager::getPresetsDirectory()
