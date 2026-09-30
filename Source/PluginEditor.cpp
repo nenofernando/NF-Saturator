@@ -15,7 +15,7 @@ constexpr float kDriveX = 210.0f, kOutputX = 990.0f;
 constexpr int kDefaultWidth = 810, kDefaultHeight = 270;   // default window size (owner's choice); double-click on the logo returns to it
 constexpr float kValveXs[3] = { 480.0f, 600.0f, 720.0f };
 // Two small knobs flanking the valves: INPUT (left) and MIX (right)
-constexpr float kInputX = 382.0f, kMixX = 818.0f, kSmallKnobY = 258.0f, kSmallBox = 64.0f;
+constexpr float kInputX = 382.0f, kMixX = 818.0f, kSmallKnobY = 254.0f, kSmallBox = 64.0f;
 
 juce::String formatDrive(double v){ return juce::String(v,1); }
 juce::String formatOut(double v){ auto s=juce::String(v,1); if(v>0.05) s="+"+s; else if(v>-0.05) s="0.0"; return s+" dB"; }
@@ -239,6 +239,18 @@ void NFSaturatorAudioProcessorEditor::paint(juce::Graphics& g)
     { std::vector<Tick> t; for(int i=0;i<=12;++i) t.push_back({-135.0f+(float)i*22.5f, {}, i%3==0, 14.0f});
       t[0].label="-12"; t[6].label="0"; t[12].label="+12"; t[6].fontSize=16.0f;
       drawScale(g,{kOutputX,kKnobY},t); }
+
+    // Tiny scales around the small knobs (7 marks over the 270-degree sweep; min / centre / max a little longer).
+    // Kept short and close to the knob so they never reach the scales of the big knobs.
+    for (float cx : { kInputX, kMixX })
+        for (int i = 0; i < 7; ++i)
+        {
+            const float a = (-135.0f + (float) i * 45.0f) * juce::MathConstants<float>::pi / 180.0f;
+            const juce::Point<float> c(cx, kSmallKnobY), dir(std::sin(a), -std::cos(a));
+            const bool major = (i % 3) == 0;
+            g.setColour(juce::Colours::white);
+            g.drawLine(juce::Line<float>(c + dir * 30.0f, c + dir * (major ? 37.0f : 34.0f)), major ? 1.8f : 1.2f);
+        }
 
     // Small knobs beside the valves: INPUT (left) and MIX (right)
     // (names sit on the same row and in the same type as TUBE / IRON / SOLID: valve names are drawn at y = 78 + 204)
