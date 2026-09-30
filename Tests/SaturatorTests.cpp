@@ -1,12 +1,12 @@
-#include "../Source/DSP/SaturatorCore.h"
+#include "../Source/DSP/CompLookup.h"
 #include <cassert>
 #include <cmath>
+#include <cstdlib>
 #include <iostream>
 #include <vector>
 
 using namespace nfsat;
 constexpr double kFs = 192000.0;
-constexpr double kPi = 3.14159265358979;
 
 // magnitude of harmonic h of a periodic signal (whole number of periods in the window)
 static double harmonic(const std::vector<double>& y, double f0, int h)
@@ -20,19 +20,17 @@ static double harmonic(const std::vector<double>& y, double f0, int h)
     return 2.0 * std::sqrt(re * re + im * im) / (double) y.size();
 }
 
-static std::vector<double> runSine(const Stages& st, double drive, double amp, double f0)
+static std::vector<double> runSine(const Stages& st, double drive, double amp, double f0, int settlePeriods = 40)
 {
-    SaturatorCore core; core.prepare(kFs);
+    const StageParams p = makeParams(st, kFs);
     ChannelState cs;
     const double pre = preGainLinear(drive);
     const int period = (int) std::round(kFs / f0);
-    const int settle = period * 40, measure = period * 20;
     std::vector<double> out;
-    for (int n = 0; n < settle + measure; ++n)
+    for (int n = 0; n < period * (settlePeriods + 20); ++n)
     {
-        const double x = amp * std::sin(2 * kPi * f0 * (double) n / kFs);
-        const double y = core.processStages(x * pre, st, cs);
-        if (n >= settle) out.push_back(y);
+        const double y = processStages(amp * std::sin(2 * kPi * f0 * (double) n / kFs) * pre, p, cs);
+        if (n >= period * settlePeriods) out.push_back(y);
     }
     return out;
 }
@@ -43,12 +41,15 @@ static double thdRatio(const std::vector<double>& y, double f0)
     return std::sqrt(h) / harmonic(y, f0, 1);
 }
 
+static Stages only(bool t, bool i, bool s, double wt = 0, double wi = 0, double ws = 0)
+{ Stages st; st.tube = t; st.iron = i; st.solid = s; st.tubeAmt = wt; st.ironAmt = wi; st.solidAmt = ws; return st; }
+
 int main()
 {
-    Stages tube{true, false, false}, iron{false, true, false}, solid{false, false, true}, none{false, false, false};
+    const Stages tube = only(1, 0, 0), iron = only(0, 1, 0), solid = only(0, 0, 1), none = only(0, 0, 0);
 
     // Drive 0 is nearly transparent
-    for (auto st : {tube, iron, solid})
+    for (auto st : { tube, iron, solid })
         assert(thdRatio(runSine(st, 0.0, 0.126, 1000.0), 1000.0) < 0.01);
 
     // TUBE: even harmonics dominate; SOLID: odd harmonics dominate and no 2nd harmonic
@@ -68,61 +69,85 @@ int main()
         assert(lowThd > 3.0 * highThd);
     }
 
-    // More drive = more distortion, for every stage
-    for (auto st : {tube, iron, solid})
+    // More drive = more distortion, for every valve
+    for (auto st : { tube, iron, solid })
         assert(thdRatio(runSine(st, 8.0, 0.3, 200.0), 200.0) > thdRatio(runSine(st, 2.0, 0.3, 200.0), 200.0));
 
-    // No stage on: passes the signal (only the DC blocker) at 1 kHz
+    // No valve on: passes the signal (only the DC blocker) at 1 kHz
     {
         auto y = runSine(none, 4.0, 0.2, 1000.0);
         const double expected = 0.2 * preGainLinear(4.0);
         assert(std::abs(harmonic(y, 1000.0, 1) - expected) < 0.01 * expected);
     }
 
-    // Level compensation: the reference programme comes out at the same RMS (+-0.5 dB) for all combos / drives
+    // ---- WARMTH (drag up on a valve): each valve changes character in its own way, monotonically
     {
-        SaturatorCore core; core.prepare(kFs);
-        for (int combo = 0; combo < 8; ++combo)
-            for (double drive : {0.0, 2.5, 5.0, 7.5, 10.0})
-            {
-                Stages st; st.tube = combo & 1; st.iron = combo & 2; st.solid = combo & 4;
-                ChannelState cs; double inE = 0, outE = 0;
-                const double pre = preGainLinear(drive), comp = compensationGain(drive, st);
-                for (int n = 0; n < 19200 + 38400; ++n)
-                {
-                    const double in = referenceSample(n, kFs);
-                    const double out = core.processStages(in * pre, st, cs) * comp;
-                    if (n >= 19200) { inE += in * in; outE += out * out; }
-                }
-                const double db = 10.0 * std::log10(outE / inE);
-                assert(std::abs(db) < 0.5);
-            }
+        // TUBE: 2nd harmonic grows with warmth
+        double prev = -1.0;
+        for (double w : { 0.0, 0.25, 0.5, 0.75, 1.0 })
+        {
+            auto y = runSine(only(1, 0, 0, w), 6.0, 0.3, 1000.0);
+            const double h2 = harmonic(y, 1000.0, 2) / harmonic(y, 1000.0, 1);
+            assert(h2 > prev); prev = h2;
+        }
+        // IRON: low-band distortion grows, top end rolls off (10 kHz gets quieter)
+        const double lowBase = thdRatio(runSine(only(0, 1, 0, 0, 0.0), 6.0, 0.3, 60.0), 60.0);
+        const double lowHot  = thdRatio(runSine(only(0, 1, 0, 0, 1.0), 6.0, 0.3, 60.0), 60.0);
+        assert(lowHot > 1.2 * lowBase);
+        const double hfBase = harmonic(runSine(only(0, 1, 0, 0, 0.0), 0.0, 0.1, 10000.0), 10000.0, 1);
+        const double hfHot  = harmonic(runSine(only(0, 1, 0, 0, 1.0), 0.0, 0.1, 10000.0), 10000.0, 1);
+        assert(hfHot < 0.8 * hfBase);
+        // SOLID: warmth adds 2nd harmonic and rounds off the top (less 5th/7th at high drive)
+        auto s0 = runSine(only(0, 0, 1, 0, 0, 0.0), 10.0, 0.5, 1000.0);
+        auto s1 = runSine(only(0, 0, 1, 0, 0, 1.0), 10.0, 0.5, 1000.0);
+        assert(harmonic(s1, 1000.0, 2) / harmonic(s1, 1000.0, 1) > harmonic(s0, 1000.0, 2) / harmonic(s0, 1000.0, 1) + 0.005);
+        assert(harmonic(s1, 1000.0, 7) / harmonic(s1, 1000.0, 1) < harmonic(s0, 1000.0, 7) / harmonic(s0, 1000.0, 1));
     }
 
-    // Stability at extremes, and no DC
+    // ---- Level compensation table
+    // (a) the table matches a live measurement at grid points (catches a stale CompTableData.h)
+    for (int t : { 0, 2, 4, 5 }) for (int i : { 0, 3, 5 }) for (int s : { 1, 4, 5 })
+        for (double drive : { 0.0, 5.0, 10.0 })
+        {
+            Stages st = only(t < 5, i < 5, s < 5, t < 5 ? t * 0.25 : 0.0, i < 5 ? i * 0.25 : 0.0, s < 5 ? s * 0.25 : 0.0);
+            const double live = measureCompensationDb(drive, st);
+            const double table = 20.0 * std::log10(compensationGain(drive, st));
+            assert(std::abs(live - table) < 0.05);
+        }
+    // (b) between grid points (any warmth, any drive) the error stays small
     {
-        SaturatorCore core; core.prepare(kFs);
-        Stages all{true, true, true}; ChannelState cs; double sum = 0; int cnt = 0;
+        std::srand(7);
+        for (int k = 0; k < 40; ++k)
+        {
+            Stages st = only(std::rand() & 1, std::rand() & 1, std::rand() & 1, (std::rand() % 101) / 100.0, (std::rand() % 101) / 100.0, (std::rand() % 101) / 100.0);
+            const double drive = (std::rand() % 101) / 10.0;
+            const double live = measureCompensationDb(drive, st);
+            const double table = 20.0 * std::log10(compensationGain(drive, st));
+            assert(std::abs(live - table) < 0.6);
+        }
+    }
+
+    // ---- Stability at extremes (everything hot), and no DC
+    {
+        const Stages hot = only(1, 1, 1, 1.0, 1.0, 1.0);
+        const StageParams p = makeParams(hot, kFs); ChannelState cs;
         for (int n = 0; n < 192000 * 2; ++n)
         {
             const double x = 10.0 * std::sin(2 * kPi * 50.0 * (double) n / kFs) * ((n / 4000) % 2 ? 1.0 : 0.0);
-            const double y = core.processStages(x * preGainLinear(10.0), all, cs);
+            const double y = processStages(x * preGainLinear(10.0), p, cs);
             assert(std::isfinite(y) && std::abs(y) < 10.0);
-            if (n > 192000) { sum += y; ++cnt; }
         }
-        (void) sum; (void) cnt;
         ChannelState c2; double dc = 0;
-        for (int n = 0; n < 192000; ++n) dc = core.processStages(0.0, all, c2);
+        for (int n = 0; n < 192000; ++n) dc = processStages(0.0, p, c2);
         assert(std::abs(dc) < 1.0e-9);
         // tube offset removed: long tone, mean ~ 0
-        SaturatorCore c3; c3.prepare(kFs); ChannelState cs3; double mean = 0; int cnt3 = 0;
+        const StageParams pt = makeParams(only(1, 0, 0, 1.0), kFs); ChannelState cs3; double mean = 0; int cnt = 0;
         for (int n = 0; n < 192000 + 19200; ++n)
         {
-            const double y = c3.processStages(0.5 * std::sin(2 * kPi * 1000.0 * (double) n / kFs) * preGainLinear(8.0), Stages{true, false, false}, cs3);
-            if (n >= 192000) { mean += y; ++cnt3; }
+            const double y = processStages(0.5 * std::sin(2 * kPi * 1000.0 * (double) n / kFs) * preGainLinear(8.0), pt, cs3);
+            if (n >= 192000) { mean += y; ++cnt; }
         }
-        mean /= (double) cnt3;
-        assert(std::abs(mean) < 2.0e-3);
+        assert(std::abs(mean / cnt) < 2.0e-3);
     }
 
     std::cout << "NF Saturator DSP tests passed\n";

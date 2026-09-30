@@ -88,7 +88,7 @@ private:
     NFSaturatorLogoButton logoButton;
     std::unique_ptr<juce::FileChooser> presetFileChooser;
     juce::Slider driveKnob,outputKnob;
-    NFSaturatorBubble driveBubble,outputBubble;
+    NFSaturatorBubble driveBubble,outputBubble,tubeBubble,ironBubble,solidBubble;
     ValueCapsule driveCap,outputCap;
     ValveButton tubeValve{"TUBE"}, ironValve{"IRON"}, solidValve{"SOLID"};
     NFSaturatorPowerButton power;
@@ -96,5 +96,7 @@ private:
     using BA=juce::AudioProcessorValueTreeState::ButtonAttachment;
     std::unique_ptr<SA> driveA,driveCapA,outputA,outputCapA;
     std::unique_ptr<BA> powerA,tubeA,ironA,solidA;
+    std::unique_ptr<juce::ParameterAttachment> tubeWarmA,ironWarmA,solidWarmA;
+    void hookValve(ValveButton& valve, NFSaturatorBubble& bubble, const char* warmId, const char* label, std::unique_ptr<juce::ParameterAttachment>& attachment);
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NFSaturatorAudioProcessorEditor)
 };

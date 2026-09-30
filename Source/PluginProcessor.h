@@ -1,6 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
-#include "DSP/SaturatorCore.h"
+#include "DSP/CompLookup.h"
 
 class NFSaturatorAudioProcessor final : public juce::AudioProcessor
 {
@@ -31,7 +31,8 @@ public:
 
 private:
     static constexpr int kOversamplingLog2 = 2; // 4x
-    nfsat::SaturatorCore core;
+    double internalRate = 192000.0;
+    std::array<double, 3> warm { 0.0, 0.0, 0.0 };   // smoothed warmth of TUBE / IRON / SOLID
     std::array<nfsat::ChannelState, 2> channelState;
     juce::dsp::Oversampling<float> oversampling { 2, (size_t) kOversamplingLog2, juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple, true, true };
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::None> dryDelay { 4096 };
@@ -39,7 +40,8 @@ private:
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> preGain, compGain;
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> outGain, powerMix;
     std::atomic<float> *driveParam = nullptr, *tubeParam = nullptr, *ironParam = nullptr, *solidParam = nullptr,
-                       *outputParam = nullptr, *powerParam = nullptr;
+                       *outputParam = nullptr, *powerParam = nullptr,
+                       *tubeWarmParam = nullptr, *ironWarmParam = nullptr, *solidWarmParam = nullptr;
     int preparedBlockSize = 512;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NFSaturatorAudioProcessor)
 };

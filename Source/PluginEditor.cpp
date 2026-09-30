@@ -11,6 +11,7 @@ juce::Image readyAsset(const char* data, int size) { return juce::ImageCache::ge
 // Base layout (1200x400): Drive left, three valves in the middle, Output right; both knobs identical in size.
 constexpr float kKnobY = 180.0f, kKnobBox = 145.0f;
 constexpr float kDriveX = 210.0f, kOutputX = 990.0f;
+constexpr int kDefaultWidth = 810, kDefaultHeight = 270;   // default window size (owner's choice); double-click on the logo returns to it
 constexpr float kValveXs[3] = { 480.0f, 600.0f, 720.0f };
 
 juce::String formatDrive(double v){ return juce::String(v,1); }
@@ -30,11 +31,11 @@ NFSaturatorAudioProcessorEditor::NFSaturatorAudioProcessorEditor(NFSaturatorAudi
     setResizable(true,true);
     getConstrainer()->setFixedAspectRatio(3.0);
     getConstrainer()->setSizeLimits(750,250,1800,600);
-    setSize(900,300);
+    setSize(kDefaultWidth,kDefaultHeight);
 
     addAndMakeVisible(logoButton);
     logoButton.setTooltip("Double-click: reset UI size");
-    logoButton.onDoubleClick = [this]{ setSize(900,300); };
+    logoButton.onDoubleClick = [this]{ setSize(kDefaultWidth,kDefaultHeight); };
     addAndMakeVisible(menuButton);
     menuButton.setTooltip("Presets");
     menuButton.onClick = [this]{ showMainMenu(); };
@@ -49,11 +50,12 @@ NFSaturatorAudioProcessorEditor::NFSaturatorAudioProcessorEditor(NFSaturatorAudi
     }
     addAndMakeVisible(driveCap);addAndMakeVisible(outputCap);
     addAndMakeVisible(driveBubble);addAndMakeVisible(outputBubble);
+    for(auto* b:{&tubeBubble,&ironBubble,&solidBubble}) addAndMakeVisible(*b);
     addAndMakeVisible(power);power.setClickingTogglesState(true);
     for(auto* v:{&tubeValve,&ironValve,&solidValve}) addAndMakeVisible(*v);
-    tubeValve.setTooltip("TUBE: triode-style warmth (even harmonics)");
-    ironValve.setTooltip("IRON: transformer-style weight (low-end saturation)");
-    solidValve.setTooltip("SOLID: transistor / op-amp bite (odd harmonics)");
+    tubeValve.setTooltip("TUBE: triode-style warmth (even harmonics). Click = on/off, drag up = warmer, drag down = cooler, Alt-click = reset");
+    ironValve.setTooltip("IRON: transformer-style weight (low-end saturation). Click = on/off, drag up = warmer, drag down = cooler, Alt-click = reset");
+    solidValve.setTooltip("SOLID: transistor / op-amp bite. Click = on/off, drag up = warmer (rounder), drag down = cooler, Alt-click = reset");
 
     driveKnob.onValueChange  = [this]{ if (driveKnob.isMouseOverOrDragging())  driveBubble.showRaw(formatDrive(driveKnob.getValue())); };
     outputKnob.onValueChange = [this]{ if (outputKnob.isMouseOverOrDragging()) outputBubble.showRaw(formatOut(outputKnob.getValue())); };
@@ -63,9 +65,30 @@ NFSaturatorAudioProcessorEditor::NFSaturatorAudioProcessorEditor(NFSaturatorAudi
     outputA=std::make_unique<SA>(a,"outputGain",outputKnob);outputCapA=std::make_unique<SA>(a,"outputGain",outputCap.slider);
     powerA=std::make_unique<BA>(a,"power",power);power.onStateChange=[this]{repaint();};
     tubeA=std::make_unique<BA>(a,"tube",tubeValve);ironA=std::make_unique<BA>(a,"iron",ironValve);solidA=std::make_unique<BA>(a,"solid",solidValve);
+    hookValve(tubeValve,tubeBubble,"tubeWarm","TUBE",tubeWarmA);
+    hookValve(ironValve,ironBubble,"ironWarm","IRON",ironWarmA);
+    hookValve(solidValve,solidBubble,"solidWarm","SOLID",solidWarmA);
     startTimerHz(30);
 }
 NFSaturatorAudioProcessorEditor::~NFSaturatorAudioProcessorEditor(){stopTimer();setLookAndFeel(nullptr);}
+
+// Wires a valve's vertical drag to its "warmth" parameter (with proper host gestures) and shows a floating value.
+void NFSaturatorAudioProcessorEditor::hookValve(ValveButton& valve, NFSaturatorBubble& bubble, const char* warmId, const char* label,
+                                                std::unique_ptr<juce::ParameterAttachment>& attachment)
+{
+    auto* param = processor.apvts.getParameter(warmId);
+    attachment = std::make_unique<juce::ParameterAttachment>(*param, [&valve](float v){ valve.setAmount(v); }, nullptr);
+    attachment->sendInitialUpdate();
+    auto* att = attachment.get();
+    valve.onDragStart = [att]{ att->beginGesture(); };
+    valve.onDragEnd   = [att]{ att->endGesture(); };
+    valve.onAmountDrag = [att,&valve,&bubble,label](float v)
+    {
+        att->setValueAsPartOfGesture(v);
+        bubble.showRaw(juce::String(label) + " " + juce::String(juce::roundToInt(v * 100.0f)) + "%");
+        if (v > 0.001f && !valve.getToggleState()) valve.setToggleState(true, juce::sendNotificationSync);   // warming an off valve switches it on
+    };
+}
 
 void NFSaturatorAudioProcessorEditor::timerCallback()
 {
@@ -229,6 +252,8 @@ void NFSaturatorAudioProcessorEditor::resized()
 
     ValveButton* valves[3] = { &tubeValve, &ironValve, &solidValve };
     for (int i = 0; i < 3; ++i) valves[i]->setBounds(scaleBounds({kValveXs[i]-60.0f, 78.0f, 120.0f, 240.0f}));
+    NFSaturatorBubble* valveBubbles[3] = { &tubeBubble, &ironBubble, &solidBubble };
+    for (int i = 0; i < 3; ++i) valveBubbles[i]->setBounds(scaleBounds({kValveXs[i]-45.0f, 56.0f, 90.0f, 24.0f}));
 
     power.setBounds(scaleBounds({1075.0f, 43.0f, 66.0f, 66.0f}));
     logoButton.setBounds(scaleBounds({42.0f, 3.0f, 108.0f, 62.0f}));

@@ -12,6 +12,9 @@ NFSaturatorAudioProcessor::NFSaturatorAudioProcessor()
     solidParam = apvts.getRawParameterValue("solid");
     outputParam = apvts.getRawParameterValue("outputGain");
     powerParam = apvts.getRawParameterValue("power");
+    tubeWarmParam = apvts.getRawParameterValue("tubeWarm");
+    ironWarmParam = apvts.getRawParameterValue("ironWarm");
+    solidWarmParam = apvts.getRawParameterValue("solidWarm");
 }
 
 void NFSaturatorAudioProcessor::prepareToPlay(double sr, int samplesPerBlock)
@@ -19,7 +22,8 @@ void NFSaturatorAudioProcessor::prepareToPlay(double sr, int samplesPerBlock)
     preparedBlockSize = juce::jmax(1, samplesPerBlock);
     oversampling.initProcessing((size_t) preparedBlockSize);
     oversampling.reset();
-    core.prepare(sr * (double) (1 << kOversamplingLog2));
+    internalRate = sr * (double) (1 << kOversamplingLog2);
+    warm = { (double) tubeWarmParam->load(), (double) ironWarmParam->load(), (double) solidWarmParam->load() };
     channelState = {};
 
     const int latency = (int) std::ceil(oversampling.getLatencyInSamples());
@@ -31,7 +35,9 @@ void NFSaturatorAudioProcessor::prepareToPlay(double sr, int samplesPerBlock)
     dryBuffer.setSize(2, preparedBlockSize);
 
     const double osRate = sr * (double) (1 << kOversamplingLog2);
-    const nfsat::Stages st { tubeParam->load() > 0.5f, ironParam->load() > 0.5f, solidParam->load() > 0.5f };
+    nfsat::Stages st;
+    st.tube = tubeParam->load() > 0.5f; st.iron = ironParam->load() > 0.5f; st.solid = solidParam->load() > 0.5f;
+    st.tubeAmt = warm[0]; st.ironAmt = warm[1]; st.solidAmt = warm[2];
     const double drive = driveParam->load();
     preGain.reset(osRate, 0.03);  preGain.setCurrentAndTargetValue((float) nfsat::preGainLinear(drive));
     compGain.reset(osRate, 0.03); compGain.setCurrentAndTargetValue((float) nfsat::compensationGain(drive, st));
@@ -53,7 +59,14 @@ void NFSaturatorAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,ju
     if (numCh <= 0 || total <= 0) return;
 
     const double drive = driveParam->load();
-    const nfsat::Stages st { tubeParam->load() > 0.5f, ironParam->load() > 0.5f, solidParam->load() > 0.5f };
+    // Warmth of each valve follows its control smoothly (about 50 ms) so dragging never zippers.
+    const double aSm = 1.0 - std::exp(-(double) total / (0.05 * juce::jmax(1.0, getSampleRate())));
+    const double warmTarget[3] = { (double) tubeWarmParam->load(), (double) ironWarmParam->load(), (double) solidWarmParam->load() };
+    for (int i = 0; i < 3; ++i) warm[(size_t) i] += aSm * (warmTarget[(size_t) i] - warm[(size_t) i]);
+    nfsat::Stages st;
+    st.tube = tubeParam->load() > 0.5f; st.iron = ironParam->load() > 0.5f; st.solid = solidParam->load() > 0.5f;
+    st.tubeAmt = warm[0]; st.ironAmt = warm[1]; st.solidAmt = warm[2];
+    const nfsat::StageParams stageParams = nfsat::makeParams(st, internalRate);
     preGain.setTargetValue((float) nfsat::preGainLinear(drive));
     compGain.setTargetValue((float) nfsat::compensationGain(drive, st));
     outGain.setTargetValue(juce::Decibels::decibelsToGain(outputParam->load()));
@@ -84,7 +97,7 @@ void NFSaturatorAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,ju
                 float* d = up.getChannelPointer((size_t) ch);
                 const double x = (double) d[i] * pg;
                 if (ch == 0) { energy += x * x; ++energyCount; }
-                d[i] = (float) (core.processStages(x, st, channelState[(size_t) ch]) * cg);
+                d[i] = (float) (nfsat::processStages(x, stageParams, channelState[(size_t) ch]) * cg);
             }
         }
         oversampling.processSamplesDown(block);
@@ -114,6 +127,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout NFSaturatorAudioProcessor::c
     p.push_back(std::make_unique<juce::AudioParameterBool>(ID{"tube",1},"Tube",true));
     p.push_back(std::make_unique<juce::AudioParameterBool>(ID{"iron",1},"Iron",true));
     p.push_back(std::make_unique<juce::AudioParameterBool>(ID{"solid",1},"Solid",false));
+    // Warmth of each valve (drag up on the valve): 0 = base character, 1 = hottest.
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(ID{"tubeWarm",1},"Tube Warmth",juce::NormalisableRange<float>(0.0f,1.0f,0.01f),0.0f));
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(ID{"ironWarm",1},"Iron Warmth",juce::NormalisableRange<float>(0.0f,1.0f,0.01f),0.0f));
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(ID{"solidWarm",1},"Solid Warmth",juce::NormalisableRange<float>(0.0f,1.0f,0.01f),0.0f));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(ID{"outputGain",1},"Output",juce::NormalisableRange<float>(-12.0f,12.0f,0.1f),0.0f,
         juce::AudioParameterFloatAttributes().withLabel("dB")));
     p.push_back(std::make_unique<juce::AudioParameterBool>(ID{"power",1},"Power",true));

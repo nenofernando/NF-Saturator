@@ -60,7 +60,7 @@ file(GLOB NFSaturator_READY_ASSETS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR
 juce_add_binary_data(NFSaturatorAssets HEADER_NAME NFSaturatorBinaryData.h NAMESPACE NFSaturatorBinaryData SOURCES ${NFSaturator_READY_ASSETS})
 target_sources(NFSaturator PRIVATE
  Source/PluginProcessor.cpp Source/PluginProcessor.h Source/PluginEditor.cpp Source/PluginEditor.h
- Source/DSP/SaturatorCore.h
+ Source/DSP/SaturatorCore.h Source/DSP/CompLookup.h Source/DSP/CompTableData.h
  Source/UI/ValueCapsule.cpp Source/UI/ValueCapsule.h Source/UI/ValveButton.h
  Source/PresetManager.cpp Source/PresetManager.h
  Source/UI/NFSaturatorLookAndFeel.cpp Source/UI/NFSaturatorLookAndFeel.h)

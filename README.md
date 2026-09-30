@@ -7,6 +7,10 @@ VST3, AU (macOS) and AAX (Pro Tools).
 - **Three valves** (each on/off, any combination): **TUBE** (triode-style warmth, even harmonics), **IRON** (transformer-style
   weight, saturates the lows first), **SOLID** (transistor / op-amp style bite, odd harmonics). They emulate the *character*
   of these kinds of circuits, not any specific unit.
+- **Warmth on each valve:** click a valve to switch it on/off; **drag it up** and the light gets hotter (orange to red-hot)
+  while that valve's character grows (TUBE: more 2nd harmonic; IRON: heavier lows and a darker top end; SOLID: rounder, with
+  a touch of even harmonics). **Drag down** to cool it back to the base state; **Alt/Option-click** resets it.
+- Opens at 810 x 270 by default; **double-click the NF logo** to return to that size.
 - **Output** (-12..+12 dB), Power, preset save/load. 4x oversampling.
 
 ![preview](Docs/preview.png)
@@ -20,5 +24,12 @@ Then copy `NF Saturator.vst3` (inside `build/NFSaturator_artefacts/Release/VST3/
 
 ## Tests
 ```
-g++ -std=c++17 -Wall -Wextra Tests/SaturatorTests.cpp -o dsp_tests && ./dsp_tests
+g++ -std=c++17 -O2 -Wall -Wextra Tests/SaturatorTests.cpp -o dsp_tests && ./dsp_tests
+```
+
+## Level-compensation table (only when the DSP changes)
+Drive is level-compensated with `Source/DSP/CompTableData.h`, generated from the very same DSP code. If you change
+`Source/DSP/SaturatorCore.h`, regenerate it (about 40 s) and run the tests, which fail if the table is stale:
+```
+g++ -std=c++17 -O2 Tools/GenCompTable.cpp -o gen && ./gen > Source/DSP/CompTableData.h
 ```
