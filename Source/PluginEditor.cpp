@@ -14,6 +14,8 @@ constexpr float kKnobY = 180.0f, kKnobBox = 145.0f;
 constexpr float kDriveX = 210.0f, kOutputX = 990.0f;
 constexpr int kDefaultWidth = 810, kDefaultHeight = 270;   // default window size (owner's choice); double-click on the logo returns to it
 constexpr float kValveXs[3] = { 480.0f, 600.0f, 720.0f };
+// Two small knobs flanking the valves: INPUT (left) and MIX (right)
+constexpr float kInputX = 382.0f, kMixX = 818.0f, kSmallKnobY = 258.0f, kSmallBox = 64.0f;
 
 juce::String formatDrive(double v){ return juce::String(v,1); }
 juce::String formatOut(double v){ auto s=juce::String(v,1); if(v>0.05) s="+"+s; else if(v>-0.05) s="0.0"; return s+" dB"; }
@@ -50,7 +52,20 @@ NFSaturatorAudioProcessorEditor::NFSaturatorAudioProcessorEditor(NFSaturatorAudi
         k.s->setDoubleClickReturnValue(true,k.def);
     }
     addAndMakeVisible(driveCap);addAndMakeVisible(outputCap);
-    addAndMakeVisible(driveBubble);addAndMakeVisible(outputBubble);
+    addAndMakeVisible(driveBubble);addAndMakeVisible(outputBubble);addAndMakeVisible(mixBubble);
+    for(auto* k:{&inputKnob,&mixKnob}){
+        addAndMakeVisible(*k);
+        k->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+        k->setRotaryParameters(juce::MathConstants<float>::pi*1.25f, juce::MathConstants<float>::pi*2.75f, true);
+        k->setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);
+    }
+    addAndMakeVisible(inputBubble);
+    inputKnob.setDoubleClickReturnValue(true,0.0);
+    mixKnob.setDoubleClickReturnValue(true,1.0);
+    inputKnob.setTooltip("INPUT: gain in front of the valves (-12..+12 dB). More input = more saturation and punch. Double-click: 0 dB");
+    mixKnob.setTooltip("MIX: blend of the original (dry) and the saturated signal. 100% = all saturated; lower = parallel saturation. Double-click: 100%");
+    inputKnob.onValueChange = [this]{ if (inputKnob.isMouseOverOrDragging()) inputBubble.showRaw("INPUT " + formatOut(inputKnob.getValue())); };
+    mixKnob.onValueChange   = [this]{ if (mixKnob.isMouseOverOrDragging())   mixBubble.showRaw("MIX " + juce::String(juce::roundToInt((float) mixKnob.getValue() * 100.0f)) + "%"); };
     for(auto* b:{&tubeBubble,&ironBubble,&solidBubble}) addAndMakeVisible(*b);
     addAndMakeVisible(power);power.setClickingTogglesState(true);
     for(auto* v:{&tubeValve,&ironValve,&solidValve}) addAndMakeVisible(*v);
@@ -62,6 +77,7 @@ NFSaturatorAudioProcessorEditor::NFSaturatorAudioProcessorEditor(NFSaturatorAudi
     outputKnob.onValueChange = [this]{ if (outputKnob.isMouseOverOrDragging()) outputBubble.showRaw(formatOut(outputKnob.getValue())); };
 
     auto& a=processor.apvts;
+    mixA=std::make_unique<SA>(a,"mix",mixKnob);inputA=std::make_unique<SA>(a,"inputGain",inputKnob);
     driveA=std::make_unique<SA>(a,"drive",driveKnob);driveCapA=std::make_unique<SA>(a,"drive",driveCap.slider);
     outputA=std::make_unique<SA>(a,"outputGain",outputKnob);outputCapA=std::make_unique<SA>(a,"outputGain",outputCap.slider);
     powerA=std::make_unique<BA>(a,"power",power);power.onStateChange=[this]{repaint();};
@@ -224,6 +240,12 @@ void NFSaturatorAudioProcessorEditor::paint(juce::Graphics& g)
       t[0].label="-12"; t[6].label="0"; t[12].label="+12"; t[6].fontSize=16.0f;
       drawScale(g,{kOutputX,kKnobY},t); }
 
+    // Small knobs beside the valves: INPUT (left) and MIX (right)
+    // (names sit on the same row and in the same type as TUBE / IRON / SOLID: valve names are drawn at y = 78 + 204)
+    g.setColour(juce::Colours::white);g.setFont(juce::Font(juce::FontOptions(15.0f,juce::Font::bold)));
+    g.drawText("INPUT", juce::Rectangle<int>((int)kInputX-60,282,120,20), juce::Justification::centred);
+    g.drawText("MIX",   juce::Rectangle<int>((int)kMixX-60,282,120,20), juce::Justification::centred);
+
     g.setColour(juce::Colours::white);g.setFont(juce::Font(juce::FontOptions(20.0f,juce::Font::bold)));
     g.drawText("DRIVE", juce::Rectangle<int>((int)kDriveX-80,266,160,24), juce::Justification::centred);
     g.drawText("OUTPUT", juce::Rectangle<int>((int)kOutputX-80,266,160,24), juce::Justification::centred);
@@ -268,6 +290,10 @@ void NFSaturatorAudioProcessorEditor::resized()
     NFSaturatorBubble* valveBubbles[3] = { &tubeBubble, &ironBubble, &solidBubble };
     for (int i = 0; i < 3; ++i) valveBubbles[i]->setBounds(scaleBounds({kValveXs[i]-45.0f, 56.0f, 90.0f, 24.0f}));
 
+    inputKnob.setBounds(scaleBounds({kInputX-kSmallBox*0.5f, kSmallKnobY-kSmallBox*0.5f, kSmallBox, kSmallBox}));
+    mixKnob.setBounds(scaleBounds({kMixX-kSmallBox*0.5f, kSmallKnobY-kSmallBox*0.5f, kSmallBox, kSmallBox}));
+    inputBubble.setBounds(scaleBounds({kInputX-45.0f, kSmallKnobY-52.0f, 90.0f, 24.0f}));
+    mixBubble.setBounds(scaleBounds({kMixX-45.0f, kSmallKnobY-52.0f, 90.0f, 24.0f}));
     power.setBounds(scaleBounds({1075.0f, 43.0f, 66.0f, 66.0f}));
     logoButton.setBounds(scaleBounds({42.0f, 3.0f, 108.0f, 62.0f}));
     menuButton.setBounds(scaleBounds({1020.0f, 25.0f, 34.0f, 28.0f}));

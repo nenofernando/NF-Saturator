@@ -11,6 +11,7 @@ struct FactoryPreset
     bool tube, iron, solid;            // valves on/off
     float tubeWarm, ironWarm, solidWarm;   // 0..1
     float outputDb;                    // -12..+12
+    float mix = 1.0f;                  // 0..1: 1 = all saturated, less = parallel with the dry signal
 };
 
 inline constexpr FactoryPreset kFactoryPresets[] = {
@@ -23,6 +24,7 @@ inline constexpr FactoryPreset kFactoryPresets[] = {
     { "Voice",   "Vocal Pop",            3.0f, true,  false, true,   0.20f, 0.0f,  0.10f, 0.0f },
     { "Voice",   "Male Voice",           4.0f, true,  true,  false,  0.30f, 0.35f, 0.0f,  0.0f },
     { "Voice",   "Female Voice",         3.0f, true,  false, true,   0.20f, 0.0f,  0.20f, 0.0f },
+    { "Voice",   "Vocal Parallel",       6.0f, true,  true,  true,   0.30f, 0.30f, 0.20f, 0.0f,  0.40f },
     { "Voice",   "Vocal Radio",          5.0f, true,  true,  true,   0.20f, 0.30f, 0.30f, 0.0f },
     { "Mix",     "Mix Glue",             2.0f, true,  true,  false,  0.10f, 0.20f, 0.0f,  0.0f },
     { "Mix",     "Mix Warm",             3.0f, true,  true,  false,  0.25f, 0.30f, 0.0f,  0.0f },
@@ -36,6 +38,7 @@ inline constexpr FactoryPreset kFactoryPresets[] = {
     { "Guitar",  "Guitar Crunch",        6.0f, true,  false, true,   0.50f, 0.0f,  0.30f, -1.0f },
     { "Guitar",  "Guitar Fat",           4.5f, true,  true,  false,  0.30f, 0.40f, 0.0f,  0.0f },
     { "Drums",   "Drums Push",           8.0f, true,  true,  true,   0.0f,  0.0f,  0.0f,  0.0f },
+    { "Drums",   "Drums Parallel",       9.0f, true,  true,  true,   0.20f, 0.30f, 0.20f, 0.0f,  0.45f },
     { "Drums",   "Drums Punch",          4.0f, false, true,  true,   0.0f,  0.40f, 0.30f, 0.0f },
     { "Drums",   "Drum Bus Glue",        3.0f, true,  true,  false,  0.20f, 0.50f, 0.0f,  0.0f },
     { "Drums",   "Kick & Bass Weight",   4.0f, true,  true,  false,  0.20f, 1.00f, 0.0f,  0.0f },

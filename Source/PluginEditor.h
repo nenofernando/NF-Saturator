@@ -88,13 +88,14 @@ private:
     NFSaturatorLogoButton logoButton;
     std::unique_ptr<juce::FileChooser> presetFileChooser;
     juce::Slider driveKnob,outputKnob;
-    NFSaturatorBubble driveBubble,outputBubble,tubeBubble,ironBubble,solidBubble;
+    NFSaturatorBubble driveBubble,outputBubble,tubeBubble,ironBubble,solidBubble,mixBubble,inputBubble;
+    juce::Slider inputKnob,mixKnob;   // the two small knobs beside the valves
     ValueCapsule driveCap,outputCap;
     ValveButton tubeValve{"TUBE"}, ironValve{"IRON"}, solidValve{"SOLID"};
     NFSaturatorPowerButton power;
     using SA=juce::AudioProcessorValueTreeState::SliderAttachment;
     using BA=juce::AudioProcessorValueTreeState::ButtonAttachment;
-    std::unique_ptr<SA> driveA,driveCapA,outputA,outputCapA;
+    std::unique_ptr<SA> driveA,driveCapA,outputA,outputCapA,mixA,inputA;
     std::unique_ptr<BA> powerA,tubeA,ironA,solidA;
     std::unique_ptr<juce::ParameterAttachment> tubeWarmA,ironWarmA,solidWarmA;
     void hookValve(ValveButton& valve, NFSaturatorBubble& bubble, const char* warmId, const char* label, std::unique_ptr<juce::ParameterAttachment>& attachment);

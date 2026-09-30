@@ -32,6 +32,8 @@ void PresetManager::applyFactoryPreset(juce::AudioProcessorValueTreeState& apvts
     setParamValue(apvts, "ironWarm", f.ironWarm);
     setParamValue(apvts, "solidWarm", f.solidWarm);
     setParamValue(apvts, "outputGain", f.outputDb);
+    setParamValue(apvts, "mix", f.mix);
+    setParamValue(apvts, "inputGain", 0.0f);
     setParamValue(apvts, "power", 1.0f);
 }
 

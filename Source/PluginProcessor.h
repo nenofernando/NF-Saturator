@@ -38,10 +38,11 @@ private:
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::None> dryDelay { 4096 };
     juce::AudioBuffer<float> dryBuffer;
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> preGain, compGain;
-    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> outGain, powerMix;
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> outGain, powerMix, wetMix, inGain;
+    std::vector<float> inGainBlock;
     std::atomic<float> *driveParam = nullptr, *tubeParam = nullptr, *ironParam = nullptr, *solidParam = nullptr,
                        *outputParam = nullptr, *powerParam = nullptr,
-                       *tubeWarmParam = nullptr, *ironWarmParam = nullptr, *solidWarmParam = nullptr;
+                       *tubeWarmParam = nullptr, *ironWarmParam = nullptr, *solidWarmParam = nullptr, *mixParam = nullptr, *inputParam = nullptr;
     int preparedBlockSize = 512;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NFSaturatorAudioProcessor)
 };

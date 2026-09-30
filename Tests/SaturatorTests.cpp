@@ -165,10 +165,10 @@ int main()
         assert(std::abs(mean / cnt) < 2.0e-3);
     }
 
-    // ---- Factory presets: 24, unique names, five categories, values in range, at least one valve on,
+    // ---- Factory presets: 26, unique names, five categories, values in range, at least one valve on,
     //      and each one stays level-compensated (finite, sane compensation gain)
     {
-        assert(nfsat::kNumFactoryPresets == 24);
+        assert(nfsat::kNumFactoryPresets == 26);
         std::set<std::string> names, cats;
         for (int i = 0; i < nfsat::kNumFactoryPresets; ++i)
         {
@@ -178,6 +178,7 @@ int main()
             assert(f.drive >= 0.0f && f.drive <= 10.0f);
             assert(f.tubeWarm >= 0.0f && f.tubeWarm <= 1.0f && f.ironWarm >= 0.0f && f.ironWarm <= 1.0f && f.solidWarm >= 0.0f && f.solidWarm <= 1.0f);
             assert(f.outputDb >= -12.0f && f.outputDb <= 12.0f);
+            assert(f.mix >= 0.0f && f.mix <= 1.0f);
             assert(f.tube || f.iron || f.solid);
             Stages st = only(f.tube, f.iron, f.solid, f.tubeWarm, f.ironWarm, f.solidWarm);
             const double g = compensationGain(f.drive, st);

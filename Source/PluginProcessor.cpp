@@ -15,6 +15,8 @@ NFSaturatorAudioProcessor::NFSaturatorAudioProcessor()
     tubeWarmParam = apvts.getRawParameterValue("tubeWarm");
     ironWarmParam = apvts.getRawParameterValue("ironWarm");
     solidWarmParam = apvts.getRawParameterValue("solidWarm");
+    mixParam = apvts.getRawParameterValue("mix");
+    inputParam = apvts.getRawParameterValue("inputGain");
 }
 
 void NFSaturatorAudioProcessor::prepareToPlay(double sr, int samplesPerBlock)
@@ -42,6 +44,9 @@ void NFSaturatorAudioProcessor::prepareToPlay(double sr, int samplesPerBlock)
     preGain.reset(osRate, 0.03);  preGain.setCurrentAndTargetValue((float) nfsat::preGainLinear(drive));
     compGain.reset(osRate, 0.03); compGain.setCurrentAndTargetValue((float) nfsat::compensationGain(drive, st));
     outGain.reset(sr, 0.02);      outGain.setCurrentAndTargetValue(juce::Decibels::decibelsToGain(outputParam->load()));
+    inGain.reset(sr, 0.02);       inGain.setCurrentAndTargetValue(juce::Decibels::decibelsToGain(inputParam->load()));
+    inGainBlock.assign((size_t) preparedBlockSize, 1.0f);
+    wetMix.reset(sr, 0.02);       wetMix.setCurrentAndTargetValue(mixParam->load());
     powerMix.reset(sr, 0.01);     powerMix.setCurrentAndTargetValue(powerParam->load() > 0.5f ? 1.0f : 0.0f);
 }
 
@@ -71,12 +76,18 @@ void NFSaturatorAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,ju
     compGain.setTargetValue((float) nfsat::compensationGain(drive, st));
     outGain.setTargetValue(juce::Decibels::decibelsToGain(outputParam->load()));
     powerMix.setTargetValue(powerParam->load() > 0.5f ? 1.0f : 0.0f);
+    wetMix.setTargetValue(juce::jlimit(0.0f, 1.0f, mixParam->load()));
+    inGain.setTargetValue(juce::Decibels::decibelsToGain(inputParam->load()));
+    if ((int) inGainBlock.size() < preparedBlockSize) inGainBlock.assign((size_t) preparedBlockSize, 1.0f);
     if (dryBuffer.getNumSamples() < preparedBlockSize) dryBuffer.setSize(2, preparedBlockSize, false, false, true);
 
     double energy = 0.0; int energyCount = 0;
     for (int start = 0; start < total; start += preparedBlockSize)
     {
         const int len = juce::jmin(preparedBlockSize, total - start);
+
+        // INPUT trim (gain in front of the valves), smoothed; the same gain sequence is reused for the MIX dry path.
+        for (int i = 0; i < len; ++i) inGainBlock[(size_t) i] = inGain.getNextValue();
 
         // Dry path, delayed by the oversampling latency so Power on/off crossfades cleanly.
         for (int ch = 0; ch < numCh; ++ch)
@@ -86,6 +97,11 @@ void NFSaturatorAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,ju
             for (int i = 0; i < len; ++i) { dryDelay.pushSample(ch, in[i]); dry[i] = dryDelay.popSample(ch); }
         }
 
+        for (int ch = 0; ch < numCh; ++ch)
+        {
+            auto* d = buffer.getWritePointer(ch, start);
+            for (int i = 0; i < len; ++i) d[i] *= inGainBlock[(size_t) i];
+        }
         juce::dsp::AudioBlock<float> block(buffer.getArrayOfWritePointers(), (size_t) numCh, (size_t) start, (size_t) len);
         auto up = oversampling.processSamplesUp(block);
         const int upLen = (int) up.getNumSamples();
@@ -104,11 +120,14 @@ void NFSaturatorAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,ju
 
         for (int i = 0; i < len; ++i)
         {
-            const float og = outGain.getNextValue(), m = powerMix.getNextValue();
+            const float og = outGain.getNextValue(), m = powerMix.getNextValue(), w = wetMix.getNextValue();
             for (int ch = 0; ch < numCh; ++ch)
             {
                 float* out = buffer.getWritePointer(ch, start);
-                out[i] = m * out[i] * og + (1.0f - m) * dryBuffer.getReadPointer(ch)[i];
+                const float dryOriginal = dryBuffer.getReadPointer(ch)[i];     // untouched input, time-aligned with the saturated signal
+                const float dryTrimmed = dryOriginal * inGainBlock[(size_t) i];// the dry that goes into the MIX blend follows INPUT
+                const float blended = w * out[i] + (1.0f - w) * dryTrimmed;    // MIX: parallel saturation (1 = all saturated)
+                out[i] = m * blended * og + (1.0f - m) * dryOriginal;          // Power crossfades to the untouched dry
             }
         }
     }
@@ -133,6 +152,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout NFSaturatorAudioProcessor::c
     p.push_back(std::make_unique<juce::AudioParameterFloat>(ID{"solidWarm",1},"Solid Warmth",juce::NormalisableRange<float>(0.0f,1.0f,0.01f),0.0f));
     p.push_back(std::make_unique<juce::AudioParameterFloat>(ID{"outputGain",1},"Output",juce::NormalisableRange<float>(-12.0f,12.0f,0.1f),0.0f,
         juce::AudioParameterFloatAttributes().withLabel("dB")));
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(ID{"inputGain",1},"Input",juce::NormalisableRange<float>(-12.0f,12.0f,0.1f),0.0f,
+        juce::AudioParameterFloatAttributes().withLabel("dB")));
+    p.push_back(std::make_unique<juce::AudioParameterFloat>(ID{"mix",1},"Mix",juce::NormalisableRange<float>(0.0f,1.0f,0.01f),1.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%")));
     p.push_back(std::make_unique<juce::AudioParameterBool>(ID{"power",1},"Power",true));
     return {p.begin(),p.end()};
 }
