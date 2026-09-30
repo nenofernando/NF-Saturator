@@ -38,3 +38,5 @@ look-and-feel and artwork).
   VST3 / AU / PACE-signed AAX options; no Apple Developer). AAX SDK in `~/Documents`, PACE account `nenofernando`,
   Wrap GUID `F98670F0-BCEB-11F1-8437-00505692AD3E` (product NFSATURATOR001). `SKIP_AAX=1` = no AAX. The version is read from `CMakeLists.txt`.
 - Windows: `Installer\Windows\build_windows_installer.ps1` (VST3 + signed AAX, Inno Setup); version also read from `CMakeLists.txt`.
+
+- The window size chosen with the resize handle is stored in the plug-in state (`uiWidth`) and restored when the editor is reopened (minimise / restore in the DAW).

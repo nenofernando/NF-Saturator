@@ -36,7 +36,10 @@ NFSaturatorAudioProcessorEditor::NFSaturatorAudioProcessorEditor(NFSaturatorAudi
     setResizable(true,true);
     getConstrainer()->setFixedAspectRatio(3.0);
     getConstrainer()->setSizeLimits(750,250,1800,600);
-    setSize(kDefaultWidth,kDefaultHeight);
+    {
+        const int w = juce::jlimit(750, 1800, (int) p.apvts.state.getProperty("uiWidth", 810));   // size chosen with the resize handle survives close / reopen
+        setSize(w, w/3);
+    }
 
     addAndMakeVisible(logoButton);
     logoButton.setTooltip("Double-click: reset UI size");
@@ -341,6 +344,7 @@ void NFSaturatorAudioProcessorEditor::paint(juce::Graphics& g)
 
 void NFSaturatorAudioProcessorEditor::resized()
 {
+    if (getWidth() > 0) processor.apvts.state.setProperty("uiWidth", getWidth(), nullptr);   // remembered for the next time the window opens
     const float scaleX = getWidth() / 1200.0f, scaleY = getHeight() / 400.0f;
     layoutScale = juce::jmin(scaleX, scaleY);
     offsetX = (getWidth()  - 1200.0f * layoutScale) * 0.5f;
