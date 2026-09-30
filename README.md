@@ -12,7 +12,7 @@ VST3, AU (macOS) and AAX (Pro Tools).
   a touch of even harmonics). **Drag down** to cool it back to the base state; **Alt/Option-click** resets it.
 - Opens at 810 x 270 by default; **double-click the NF logo** to return to that size.
 - **Two small knobs beside the valves:** **INPUT** (left, -12..+12 dB, gain in front of the valves: more input = more saturation/punch) and **MIX** (right, blends the original with the saturated signal = parallel saturation; 100% = all saturated).
-- **Output** (-12..+12 dB), Power, **26 factory presets** (Voice incl. rock / pop / male / female, Mix, Master, Guitar, Drums) plus preset save/load. 4x oversampling.
+- **Output** (-12..+12 dB), Power, **26 factory presets** (Voice incl. rock / pop / male / female, Mix, Master, Guitar, Drums) plus preset save/load, with a small preset tab (prev / name / next) at the top right. The 3-line button holds the manuals and About. 4x oversampling.
 
 ![preview](Docs/preview.png)
 

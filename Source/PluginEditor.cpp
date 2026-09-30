@@ -1,6 +1,7 @@
 #include "PluginEditor.h"
 #include "NFSaturatorBinaryData.h"
 #include "FactoryPresets.h"
+#include "ManualManager.h"
 #ifndef JucePlugin_VersionString
  #define JucePlugin_VersionString "0.0.0-test"
 #endif
@@ -40,8 +41,15 @@ NFSaturatorAudioProcessorEditor::NFSaturatorAudioProcessorEditor(NFSaturatorAudi
     logoButton.setTooltip("Double-click: reset UI size");
     logoButton.onDoubleClick = [this]{ setSize(kDefaultWidth,kDefaultHeight); };
     addAndMakeVisible(menuButton);
-    menuButton.setTooltip("Presets");
+    menuButton.setTooltip("Manuals and About");
     menuButton.onClick = [this]{ showMainMenu(); };
+    addAndMakeVisible(presetBar);
+    presetBar.setTooltip("Preset: click the name for the list, arrows = previous / next");
+    presetBar.onPrev = [this]{ stepPreset(-1); };
+    presetBar.onNext = [this]{ stepPreset(+1); };
+    presetBar.onMenu = [this]{ showPresetMenu(); };
+    presetBar.setName(nfsat::PresetManager::getCurrentPresetName(processor.apvts));
+    processor.apvts.state.addListener(this);
 
     struct K{ juce::Slider* s; double def; };
     for(auto k:{K{&driveKnob,4.0},K{&outputKnob,0.0}}){
@@ -87,7 +95,7 @@ NFSaturatorAudioProcessorEditor::NFSaturatorAudioProcessorEditor(NFSaturatorAudi
     hookValve(solidValve,solidBubble,"solidWarm","SOLID",solidWarmA);
     startTimerHz(30);
 }
-NFSaturatorAudioProcessorEditor::~NFSaturatorAudioProcessorEditor(){stopTimer();setLookAndFeel(nullptr);}
+NFSaturatorAudioProcessorEditor::~NFSaturatorAudioProcessorEditor(){processor.apvts.state.removeListener(this);cancelPendingUpdate();stopTimer();setLookAndFeel(nullptr);}
 
 // Wires a valve's vertical drag to its "warmth" parameter (with proper host gestures) and shows a floating value.
 void NFSaturatorAudioProcessorEditor::hookValve(ValveButton& valve, NFSaturatorBubble& bubble, const char* warmId, const char* label,
@@ -123,23 +131,21 @@ juce::Rectangle<int> NFSaturatorAudioProcessorEditor::scaleBounds(juce::Rectangl
              juce::roundToInt(b.getWidth()*layoutScale), juce::roundToInt(b.getHeight()*layoutScale) };
 }
 
+// 3-line button: manuals and about only (presets live in the preset tab)
 void NFSaturatorAudioProcessorEditor::showMainMenu()
 {
-    juce::PopupMenu factory;
-    juce::String lastCategory;
-    for (int i = 0; i < nfsat::kNumFactoryPresets; ++i)
-    {
-        const auto& f = nfsat::kFactoryPresets[i];
-        if (lastCategory != f.category) { factory.addSectionHeader(f.category); lastCategory = f.category; }
-        factory.addItem(100 + i, f.name);
-    }
-
     juce::PopupMenu menu;
-    menu.addSectionHeader("PRESETS");
-    menu.addSubMenu("Factory Presets", factory);
-    menu.addSeparator();
-    menu.addItem(1, "Save Preset...");
-    menu.addItem(2, "Load Preset...");
+    menu.addSectionHeader("MANUALS");
+#ifdef NFSAT_HAS_MANUAL_PT
+    menu.addItem(10, "Manual - Portugues");
+#else
+    menu.addItem(10, "Manual - Portugues", false);
+#endif
+#ifdef NFSAT_HAS_MANUAL_EN
+    menu.addItem(11, "Manual - English");
+#else
+    menu.addItem(11, "Manual - English", false);
+#endif
     menu.addSeparator();
     menu.addItem(3, "About");
     juce::Component::SafePointer<NFSaturatorAudioProcessorEditor> safeThis(this);
@@ -147,11 +153,50 @@ void NFSaturatorAudioProcessorEditor::showMainMenu()
         [safeThis](int result)
         {
             if (safeThis == nullptr || result == 0) return;
+            if (result == 3) safeThis->showAbout();
+#ifdef NFSAT_HAS_MANUAL_PT
+            else if (result == 10) nfsat::ManualManager::openManual(NFSaturatorBinaryData::NF_Saturator_Manual_Portugues_V1_0_pdf, NFSaturatorBinaryData::NF_Saturator_Manual_Portugues_V1_0_pdfSize, "NF_Saturator_Manual_Portugues_V1.0.pdf");
+#endif
+#ifdef NFSAT_HAS_MANUAL_EN
+            else if (result == 11) nfsat::ManualManager::openManual(NFSaturatorBinaryData::NF_Saturator_Manual_English_V1_0_pdf, NFSaturatorBinaryData::NF_Saturator_Manual_English_V1_0_pdfSize, "NF_Saturator_Manual_English_V1.0.pdf");
+#endif
+        });
+}
+
+// Preset tab: factory presets by category, then save / load
+void NFSaturatorAudioProcessorEditor::showPresetMenu()
+{
+    juce::PopupMenu menu;
+    const auto current = nfsat::PresetManager::getCurrentPresetName(processor.apvts);
+    juce::String lastCategory;
+    for (int i = 0; i < nfsat::kNumFactoryPresets; ++i)
+    {
+        const auto& f = nfsat::kFactoryPresets[i];
+        if (lastCategory != f.category) { menu.addSectionHeader(f.category); lastCategory = f.category; }
+        menu.addItem(100 + i, f.name, true, current == f.name);
+    }
+    menu.addSeparator();
+    menu.addItem(1, "Save Preset...");
+    menu.addItem(2, "Load Preset...");
+    juce::Component::SafePointer<NFSaturatorAudioProcessorEditor> safeThis(this);
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&presetBar).withMinimumWidth(presetBar.getWidth()),
+        [safeThis](int result)
+        {
+            if (safeThis == nullptr || result == 0) return;
             if (result == 1) safeThis->handleSavePreset();
             else if (result == 2) safeThis->handleLoadPreset();
-            else if (result == 3) safeThis->showAbout();
             else if (result >= 100) nfsat::PresetManager::applyFactoryPreset(safeThis->processor.apvts, result - 100);
         });
+}
+
+void NFSaturatorAudioProcessorEditor::stepPreset(int direction)
+{
+    const auto current = nfsat::PresetManager::getCurrentPresetName(processor.apvts);
+    int index = -1;
+    for (int i = 0; i < nfsat::kNumFactoryPresets; ++i) if (current == nfsat::kFactoryPresets[i].name) { index = i; break; }
+    const int n = nfsat::kNumFactoryPresets;
+    index = index < 0 ? (direction > 0 ? 0 : n - 1) : (index + direction + n) % n;
+    nfsat::PresetManager::applyFactoryPreset(processor.apvts, index);
 }
 
 void NFSaturatorAudioProcessorEditor::showAbout()
@@ -238,7 +283,7 @@ void NFSaturatorAudioProcessorEditor::paint(juce::Graphics& g)
       drawScale(g,{kDriveX,kKnobY},t); }
     { // Output: same look as Drive - a numbered mark every 2 dB, -12 ... 0 ... +12 (0 dB at 12 o'clock)
       std::vector<Tick> t;
-      for(int i=0;i<=12;++i){ const int v=-12+2*i; t.push_back({-135.0f+(float)i*22.5f, v>0 ? "+"+juce::String(v) : juce::String(v), true, v==0 ? 16.0f : 14.0f}); }
+      for(int i=0;i<=12;++i){ const int v=-12+2*i; t.push_back({-135.0f+(float)i*22.5f, v>0 ? "+"+juce::String(v) : juce::String(v), true, 16.0f}); }
       drawScale(g,{kOutputX,kKnobY},t); }
 
     // Tiny scales around the small knobs (7 marks over the 270-degree sweep; min / centre / max a little longer and numbered).
@@ -321,5 +366,6 @@ void NFSaturatorAudioProcessorEditor::resized()
     mixBubble.setBounds(scaleBounds({kMixX-38.0f, kSmallKnobY+3.0f, 76.0f, 24.0f}));
     power.setBounds(scaleBounds({1075.0f, 43.0f, 66.0f, 66.0f}));
     logoButton.setBounds(scaleBounds({42.0f, 3.0f, 108.0f, 62.0f}));
+    presetBar.setBounds(scaleBounds({780.0f, 24.0f, 225.0f, 29.0f}));
     menuButton.setBounds(scaleBounds({1020.0f, 25.0f, 34.0f, 28.0f}));
 }

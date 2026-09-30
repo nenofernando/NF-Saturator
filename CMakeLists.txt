@@ -57,13 +57,29 @@ juce_generate_juce_header(NFSaturator)
 
 # Artwork embedded as binary data (header NFSaturatorBinaryData.h).
 file(GLOB NFSaturator_READY_ASSETS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Assets/PNG_READY_1200x400/*.png")
-juce_add_binary_data(NFSaturatorAssets HEADER_NAME NFSaturatorBinaryData.h NAMESPACE NFSaturatorBinaryData SOURCES ${NFSaturator_READY_ASSETS})
+# Manuals are optional: drop the PDFs in Assets/Manuals (see the README there) and rebuild.
+set(NFSaturator_MANUAL_PT "${CMAKE_CURRENT_SOURCE_DIR}/Assets/Manuals/NF_Saturator_Manual_Portugues_V1.0.pdf")
+set(NFSaturator_MANUAL_EN "${CMAKE_CURRENT_SOURCE_DIR}/Assets/Manuals/NF_Saturator_Manual_English_V1.0.pdf")
+set(NFSaturator_MANUAL_ASSETS "")
+if(EXISTS "${NFSaturator_MANUAL_PT}")
+ list(APPEND NFSaturator_MANUAL_ASSETS "${NFSaturator_MANUAL_PT}")
+endif()
+if(EXISTS "${NFSaturator_MANUAL_EN}")
+ list(APPEND NFSaturator_MANUAL_ASSETS "${NFSaturator_MANUAL_EN}")
+endif()
+juce_add_binary_data(NFSaturatorAssets HEADER_NAME NFSaturatorBinaryData.h NAMESPACE NFSaturatorBinaryData SOURCES ${NFSaturator_READY_ASSETS} ${NFSaturator_MANUAL_ASSETS})
 target_sources(NFSaturator PRIVATE
  Source/PluginProcessor.cpp Source/PluginProcessor.h Source/PluginEditor.cpp Source/PluginEditor.h
  Source/DSP/SaturatorCore.h Source/DSP/CompLookup.h Source/DSP/CompTableData.h
  Source/UI/ValueCapsule.cpp Source/UI/ValueCapsule.h Source/UI/ValveButton.h
- Source/PresetManager.cpp Source/PresetManager.h Source/FactoryPresets.h
+ Source/PresetManager.cpp Source/PresetManager.h Source/FactoryPresets.h Source/ManualManager.cpp Source/ManualManager.h
  Source/UI/NFSaturatorLookAndFeel.cpp Source/UI/NFSaturatorLookAndFeel.h)
+if(EXISTS "${NFSaturator_MANUAL_PT}")
+ target_compile_definitions(NFSaturator PRIVATE NFSAT_HAS_MANUAL_PT=1)
+endif()
+if(EXISTS "${NFSaturator_MANUAL_EN}")
+ target_compile_definitions(NFSaturator PRIVATE NFSAT_HAS_MANUAL_EN=1)
+endif()
 target_compile_definitions(NFSaturator PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_DISPLAY_SPLASH_SCREEN=0 JUCE_REPORT_APP_USAGE=0)
 target_link_libraries(NFSaturator PRIVATE NFSaturatorAssets juce::juce_audio_utils juce::juce_dsp PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)
 

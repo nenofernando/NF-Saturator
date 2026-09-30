@@ -24,6 +24,7 @@ void PresetManager::applyFactoryPreset(juce::AudioProcessorValueTreeState& apvts
 {
     if (index < 0 || index >= kNumFactoryPresets) return;
     const auto& f = kFactoryPresets[index];
+    apvts.state.setProperty("presetName", f.name, nullptr);
     setParamValue(apvts, "drive", f.drive);
     setParamValue(apvts, "tube", f.tube ? 1.0f : 0.0f);
     setParamValue(apvts, "iron", f.iron ? 1.0f : 0.0f);
@@ -37,6 +38,11 @@ void PresetManager::applyFactoryPreset(juce::AudioProcessorValueTreeState& apvts
     setParamValue(apvts, "power", 1.0f);
 }
 
+juce::String PresetManager::getCurrentPresetName(juce::AudioProcessorValueTreeState& apvts)
+{
+    return apvts.state.getProperty("presetName", "Default").toString();
+}
+
 juce::File PresetManager::getPresetsDirectory()
 {
     auto dir = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
@@ -47,6 +53,7 @@ juce::File PresetManager::getPresetsDirectory()
 
 juce::Result PresetManager::savePreset(juce::AudioProcessorValueTreeState& apvts, const juce::File& file)
 {
+    apvts.state.setProperty("presetName", file.getFileNameWithoutExtension(), nullptr);   // the saved preset carries its own name
     auto xml = apvts.copyState().createXml();
     if (xml == nullptr) return juce::Result::fail("Could not serialise the current state.");
     xml->setAttribute("nfsatPresetSignature", kSignature);
