@@ -371,6 +371,6 @@ void NFSaturatorAudioProcessorEditor::resized()
     mixBubble.setBounds(scaleBounds({kMixX-38.0f, kSmallKnobY+3.0f, 76.0f, 24.0f}));
     power.setBounds(scaleBounds({1075.0f, 43.0f, 66.0f, 66.0f}));
     logoButton.setBounds(scaleBounds({42.0f, 3.0f, 108.0f, 62.0f}));
-    presetBar.setBounds(scaleBounds({780.0f, 24.0f, 225.0f, 29.0f}));
+    presetBar.setBounds(scaleBounds({815.0f, 26.0f, 190.0f, 25.0f}));
     menuButton.setBounds(scaleBounds({1020.0f, 25.0f, 34.0f, 28.0f}));
 }
