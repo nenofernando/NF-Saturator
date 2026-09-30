@@ -16,7 +16,8 @@ constexpr float kDriveX = 210.0f, kOutputX = 990.0f;
 constexpr int kDefaultWidth = 810, kDefaultHeight = 270;   // default window size (owner's choice); double-click on the logo returns to it
 constexpr float kValveXs[3] = { 480.0f, 600.0f, 720.0f };
 // Two small knobs flanking the valves: INPUT (left) and MIX (right)
-constexpr float kInputX = 382.0f, kMixX = 818.0f, kSmallKnobY = 254.0f, kSmallBox = 64.0f;
+constexpr float kInputX = 382.0f, kMixX = 818.0f, kSmallKnobY = 250.0f, kSmallBox = 72.0f;   // small knobs: a bit larger (was 64), still clear of the big knobs and the valves
+constexpr float kSmallScale = kSmallBox / 64.0f;   // tick marks and numbers scale with the knob
 
 juce::String formatDrive(double v){ return juce::String(v,1); }
 juce::String formatOut(double v){ auto s=juce::String(v,1); if(v>0.05) s="+"+s; else if(v>-0.05) s="0.0"; return s+" dB"; }
@@ -299,11 +300,11 @@ void NFSaturatorAudioProcessorEditor::paint(juce::Graphics& g)
                 const juce::Point<float> c(centres[k], kSmallKnobY), dir(std::sin(a), -std::cos(a));
                 const bool major = (i % 3) == 0;
                 g.setColour(juce::Colours::white);
-                g.drawLine(juce::Line<float>(c + dir * 30.0f, c + dir * (major ? 37.0f : 34.0f)), major ? 1.8f : 1.2f);
+                g.drawLine(juce::Line<float>(c + dir * (30.0f * kSmallScale), c + dir * ((major ? 37.0f : 34.0f) * kSmallScale)), major ? 1.9f : 1.3f);
                 if (major)
                 {
-                    const auto p = c + dir * 45.0f;
-                    g.setFont(juce::Font(juce::FontOptions(10.5f)));
+                    const auto p = c + dir * (46.0f * kSmallScale);
+                    g.setFont(juce::Font(juce::FontOptions(11.0f)));
                     g.drawText(k == 0 ? inputLabels[i / 3] : mixLabels[i / 3], juce::Rectangle<float>(p.x - 16.0f, p.y - 7.0f, 32.0f, 14.0f), juce::Justification::centred);
                 }
             }
