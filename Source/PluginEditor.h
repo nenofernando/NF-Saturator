@@ -5,6 +5,7 @@
 #include "UI/ValueCapsule.h"
 #include "UI/ValveButton.h"
 #include "PresetManager.h"
+#include "License/LicenseActivationComponent.h"
 
 class NFSaturatorPowerButton final:public juce::ToggleButton
 {
@@ -138,6 +139,7 @@ private:
     ValueCapsule driveCap,outputCap;
     ValveButton tubeValve{"TUBE"}, ironValve{"IRON"}, solidValve{"SOLID"};
     NFSaturatorPowerButton power;
+    LicenseActivationComponent licenseOverlay;
     using SA=juce::AudioProcessorValueTreeState::SliderAttachment;
     using BA=juce::AudioProcessorValueTreeState::ButtonAttachment;
     std::unique_ptr<SA> driveA,driveCapA,outputA,outputCapA,mixA,inputA;

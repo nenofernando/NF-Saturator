@@ -81,7 +81,7 @@ if(EXISTS "${NFSaturator_MANUAL_EN}")
  target_compile_definitions(NFSaturator PRIVATE NFSAT_HAS_MANUAL_EN=1)
 endif()
 target_compile_definitions(NFSaturator PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_DISPLAY_SPLASH_SCREEN=0 JUCE_REPORT_APP_USAGE=0)
-target_link_libraries(NFSaturator PRIVATE NFSaturatorAssets juce::juce_audio_utils juce::juce_dsp PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)
+target_link_libraries(NFSaturator PRIVATE NFSaturatorAssets juce::juce_audio_utils juce::juce_dsp juce::juce_cryptography PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)
 
 add_executable(NFSaturatorDspTests Tests/SaturatorTests.cpp)
 if(MSVC)

@@ -59,6 +59,7 @@ bool NFSaturatorAudioProcessor::isBusesLayoutSupported(const BusesLayout& l) con
 void NFSaturatorAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBuffer&)
 {
     juce::ScopedNoDenormals guard;
+    struct LicenseMuteGuard { NFLicenseManager& lm; juce::AudioBuffer<float>& b; ~LicenseMuteGuard(){ if(!lm.isActivated()) b.clear(); } } licenseGuard{licenseManager, buffer};
     const int numCh = juce::jmin(2, buffer.getNumChannels());
     const int total = buffer.getNumSamples();
     if (numCh <= 0 || total <= 0) return;

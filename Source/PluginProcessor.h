@@ -1,10 +1,12 @@
 #pragma once
 #include <JuceHeader.h>
 #include "DSP/CompLookup.h"
+#include "License/NFLicenseManager.h"
 
 class NFSaturatorAudioProcessor final : public juce::AudioProcessor
 {
 public:
+    NFLicenseManager licenseManager { "NF_SATURATOR" };
     NFSaturatorAudioProcessor();
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}

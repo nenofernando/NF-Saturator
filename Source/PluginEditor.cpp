@@ -30,7 +30,7 @@ void NFSaturatorPowerButton::paintButton(juce::Graphics& g,bool,bool)
 
 NFSaturatorAudioProcessorEditor::NFSaturatorAudioProcessorEditor(NFSaturatorAudioProcessor& p)
     :AudioProcessorEditor(&p),processor(p),
-     driveCap("0 - 10",4.0,false,formatDrive),outputCap("-12 to +12 dB",0.0,false,formatOut)
+     driveCap("0 - 10",4.0,false,formatDrive),outputCap("-12 to +12 dB",0.0,false,formatOut),licenseOverlay(p.licenseManager)
 {
     setLookAndFeel(&look);
     setResizable(true,true);
@@ -98,6 +98,11 @@ NFSaturatorAudioProcessorEditor::NFSaturatorAudioProcessorEditor(NFSaturatorAudi
     hookValve(ironValve,ironBubble,"ironWarm","IRON",ironWarmA);
     hookValve(solidValve,solidBubble,"solidWarm","SOLID",solidWarmA);
     startTimerHz(30);
+
+    addChildComponent(licenseOverlay);
+    licenseOverlay.setVisible(!processor.licenseManager.isActivated());
+    licenseOverlay.onActivated=[this]{licenseOverlay.setVisible(false);};
+    licenseOverlay.setLookAndFeel(&juce::LookAndFeel::getDefaultLookAndFeel());
 }
 NFSaturatorAudioProcessorEditor::~NFSaturatorAudioProcessorEditor(){processor.apvts.state.removeListener(this);cancelPendingUpdate();stopTimer();setLookAndFeel(nullptr);}
 
@@ -373,4 +378,5 @@ void NFSaturatorAudioProcessorEditor::resized()
     logoButton.setBounds(scaleBounds({42.0f, 3.0f, 108.0f, 62.0f}));
     presetBar.setBounds(scaleBounds({848.0f, 28.0f, 157.0f, 21.0f}));
     menuButton.setBounds(scaleBounds({1020.0f, 25.0f, 34.0f, 28.0f}));
+    licenseOverlay.setBounds(getLocalBounds());
 }
